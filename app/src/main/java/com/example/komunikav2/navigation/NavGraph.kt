@@ -6,13 +6,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.komunikav2.ui.screens.HomeScreen
 import com.example.komunikav2.ui.screens.SinglePhoneScreen
+import com.example.komunikav2.ui.screens.SplashScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Splash.route
     ) {
+        composable(route = Screen.Splash.route) {
+            SplashScreen(navController = navController)
+        }
+        
         composable(route = Screen.Home.route) {
             HomeScreen(navController = navController)
         }
@@ -21,9 +26,9 @@ fun NavGraph(navController: NavHostController) {
             // TODO: Implement NavigationScreen
         }
         
-                            composable(route = Screen.Singlephone.route) {
-                        SinglePhoneScreen(navController = navController)
-                    }
+        composable(route = Screen.Singlephone.route) {
+            SinglePhoneScreen(navController = navController)
+        }
         
         composable(route = Screen.Multiphone.route) {
             // TODO: Implement MultiphoneScreen
