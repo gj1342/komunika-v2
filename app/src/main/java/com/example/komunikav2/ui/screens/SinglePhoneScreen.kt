@@ -35,12 +35,14 @@ import com.example.komunikav2.ui.components.VideoCard
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.colorResource
 import androidx.compose.foundation.Image
 
 @Composable
 fun SinglePhoneScreen(navController: NavController) {
     var messageText by remember { mutableStateOf("") }
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
+    var showClearConfirmation by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -67,10 +69,7 @@ fun SinglePhoneScreen(navController: NavController) {
             TopBar(
                 title = stringResource(R.string.single_phone),
                 onBackClick = { navController.navigateUp() },
-                onClearClick = { 
-                    messages = listOf()
-                    messageText = ""
-                }
+                onClearClick = { showClearConfirmation = true }
             )
             
             Column(
@@ -117,6 +116,47 @@ fun SinglePhoneScreen(navController: NavController) {
                     }
                 )
             }
+        }
+        
+        if (showClearConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showClearConfirmation = false },
+                title = {
+                    Text(
+                        text = stringResource(R.string.clear_chat_title),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = stringResource(R.string.clear_chat_message)
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            messages = listOf()
+                            messageText = ""
+                            showClearConfirmation = false
+                        }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.clear),
+                            color = colorResource(R.color.error_red)
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showClearConfirmation = false }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.cancel),
+                            color = colorResource(R.color.dark_gray)
+                        )
+                    }
+                }
+            )
         }
     }
 } 

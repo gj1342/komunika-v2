@@ -26,4 +26,7 @@
     <string name="back">Back</string>
     <string name="clear_button">CLEAR</string>
     <string name="upload_avatar">Upload Avatar</string>
+    <string name="clear_chat_title">Clear Chat</string>
+    <string name="clear_chat_message">Are you sure you want to clear all chat messages? This action cannot be undone.</string>
+    <string name="clear">Clear</string>
 </resources>

@@ -60,6 +60,7 @@ fun TopBar(
             modifier = Modifier
                 .width(48.dp)
                 .height(32.dp)
+                .clip(RoundedCornerShape(4.dp))
                 .background(colorResource(R.color.error_red))
                 .clickable { onClearClick() },
             contentAlignment = Alignment.Center
