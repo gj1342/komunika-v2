@@ -5,11 +5,11 @@ plugins {
 
 android {
     namespace = "com.example.komunikav2"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.komunikav2"
-        minSdk = 21
+        minSdk = 24
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -66,7 +66,6 @@ dependencies {
     implementation(libs.androidx.camera.view)
     
     implementation(libs.circleimageview)
-    implementation(libs.jna)
     
     implementation(libs.google.mediapipe.tasks.vision)
     
