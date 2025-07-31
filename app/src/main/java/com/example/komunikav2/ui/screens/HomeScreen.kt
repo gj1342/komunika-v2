@@ -119,7 +119,7 @@ fun HomeScreen(navController: NavController) {
             )
             
             FeatureButton(
-                title = stringResource(R.string.vocabulary),
+                title = stringResource(R.string.vocabulary_button),
                 subtitle = stringResource(R.string.vocabulary_subtitle),
                 iconResId = R.drawable.vocabulary,
                 backgroundColor = Color(0xFF388E3C),

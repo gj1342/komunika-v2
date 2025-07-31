@@ -24,7 +24,7 @@ import com.example.komunikav2.R
 fun TopBar(
     title: String,
     onBackClick: () -> Unit,
-    onClearClick: () -> Unit,
+    onClearClick: (() -> Unit)? = null,
     backgroundColor: androidx.compose.ui.graphics.Color = colorResource(R.color.surface_blue)
 ) {
     Row(
@@ -57,21 +57,23 @@ fun TopBar(
         
         Spacer(modifier = Modifier.weight(1f))
         
-        Box(
-            modifier = Modifier
-                .width(64.dp)
-                .height(40.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(colorResource(R.color.error_red))
-                .clickable { onClearClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(R.string.clear_button),
-                color = colorResource(R.color.white),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
+        if (onClearClick != null) {
+            Box(
+                modifier = Modifier
+                    .width(64.dp)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(colorResource(R.color.error_red))
+                    .clickable { onClearClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.clear_button),
+                    color = colorResource(R.color.white),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 } 

@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import com.example.komunikav2.ui.screens.HomeScreen
 import com.example.komunikav2.ui.screens.SinglePhoneScreen
 import com.example.komunikav2.ui.screens.SplashScreen
+import com.example.komunikav2.ui.screens.VocabularyScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -35,7 +36,7 @@ fun NavGraph(navController: NavHostController) {
         }
         
         composable(route = Screen.Vocabulary.route) {
-            // TODO: Implement VocabularyScreen
+            VocabularyScreen(navController = navController)
         }
     }
 } 

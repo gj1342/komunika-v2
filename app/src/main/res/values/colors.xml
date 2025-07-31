@@ -18,4 +18,18 @@
     <color name="gray">#808080</color>
     <color name="dark_gray">#424242</color>
     <color name="error_red">#FF0000</color>
+    <color name="button_light_blue">#E3F2FD</color>
+    <color name="button_blue">#2196F3</color>
+    <color name="button_yellow">#FFEB3B</color>
+    <color name="button_purple">#9C27B0</color>
+    <color name="button_teal">#00BCD4</color>
+    <color name="button_brown_orange">#795548</color>
+    <color name="button_pink_purple">#E91E63</color>
+    <color name="button_peach_orange">#FFCC80</color>
+    <color name="button_yellow_orange">#FFC107</color>
+    <color name="button_light_peach">#FFECB3</color>
+    <color name="button_light_purple">#E1BEE7</color>
+    <color name="button_dark_orange_brown">#BF360C</color>
+    <color name="button_light_green">#C8E6C9</color>
+    <color name="button_light_teal_green">#B2EBF2</color>
 </resources>

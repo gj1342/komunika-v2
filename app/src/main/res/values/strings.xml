@@ -19,7 +19,7 @@
     <string name="singlephone_subtitle">Inclusive practice on one device</string>
     <string name="multiphone">Multiphone</string>
     <string name="multiphone_subtitle">Inclusive practice using two device</string>
-    <string name="vocabulary">Vocabulary</string>
+    <string name="vocabulary_button">Vocabulary</string>
     <string name="vocabulary_subtitle">Learn new words and phrases</string>
     <string name="user_type">User Type:</string>
     <string name="device_id">Device ID:</string>
@@ -31,4 +31,23 @@
     <string name="clear">Clear</string>
     <string name="lets_talk">Lets Talk!</string>
     <string name="app_title">KOMUNIKA</string>
+    <string name="vocabulary">VOCABULARY</string>
+    <string name="greetings">Greetings</string>
+    <string name="wh_questions">WH-Questions</string>
+    <string name="gender">Gender</string>
+    <string name="survival">Survival</string>
+    <string name="facial_expressions">Facial Expressions</string>
+    <string name="calendar">Calendar</string>
+    <string name="time">Time</string>
+    <string name="money_matters">Money Matters</string>
+    <string name="numbers">Numbers</string>
+    <string name="people">People</string>
+    <string name="place">Place</string>
+    <string name="family">Family</string>
+    <string name="food">Food</string>
+    <string name="colors">Colors</string>
+    <string name="pronouns">Pronouns</string>
+    <string name="verbs">Verbs</string>
+    <string name="adjectives_adverbs">Adjectives &amp; Adverbs</string>
+    <string name="alphabets">Alphabets</string>
 </resources>
