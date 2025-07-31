@@ -69,7 +69,8 @@ fun SinglePhoneScreen(navController: NavController) {
             TopBar(
                 title = stringResource(R.string.single_phone),
                 onBackClick = { navController.navigateUp() },
-                onClearClick = { showClearConfirmation = true }
+                onClearClick = { showClearConfirmation = true },
+                backgroundColor = androidx.compose.ui.graphics.Color.Transparent
             )
             
             Column(
