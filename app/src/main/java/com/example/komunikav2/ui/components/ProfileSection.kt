@@ -1,8 +1,6 @@
 package com.example.komunikav2.ui.components
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,16 +14,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.komunikav2.R
-import android.net.Uri
-import coil.compose.AsyncImage
 
 @Composable
 fun ProfileSection(
@@ -33,7 +26,6 @@ fun ProfileSection(
     userAvatar: String = "👓",
     userType: String = "Deaf",
     deviceId: String = "UP1A.231005.007",
-    uploadedAvatarUri: String? = null,
     onEditName: () -> Unit = {},
     onUserTypeChange: (String) -> Unit = {},
     onHelpClick: () -> Unit = {}
@@ -53,21 +45,10 @@ fun ProfileSection(
                 .background(Color(0xFFE3F2FD)),
             contentAlignment = Alignment.Center
         ) {
-            if (uploadedAvatarUri != null) {
-                AsyncImage(
-                    model = Uri.parse(uploadedAvatarUri),
-                    contentDescription = "User Avatar",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = userAvatar,
-                    fontSize = 60.sp // Larger emoji to match bigger circle
-                )
-            }
+            Text(
+                text = userAvatar,
+                fontSize = 60.sp // Larger emoji to match bigger circle
+            )
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(
