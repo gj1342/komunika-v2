@@ -29,7 +29,6 @@
     <string name="clear_chat_title">Clear Chat</string>
     <string name="clear_chat_message">Are you sure you want to clear all chat messages? This action cannot be undone.</string>
     <string name="clear">Clear</string>
-    <string name="lets_talk">Lets Talk!</string>
     <string name="app_title">KOMUNIKA</string>
     <string name="vocabulary">VOCABULARY</string>
     <string name="greetings">Greetings</string>
@@ -50,4 +49,12 @@
     <string name="verbs">Verbs</string>
     <string name="adjectives_adverbs">Adjectives &amp; Adverbs</string>
     <string name="alphabets">Alphabets</string>
+    <string name="multi_phone_title">MULTI - PHONE</string>
+    <string name="lets_talk">Lets Talk</string>
+    <string name="enable_services_instruction">Please enable your Wi-fi, Bluetooth and Location if you want to start a communication session.</string>
+    <string name="server_id">Server ID</string>
+    <string name="start">Start</string>
+    <string name="phone_icon_description">Phone with arrow</string>
+    <string name="wifi_bluetooth_location_description">Wi-Fi, Bluetooth and Location services</string>
+    <string name="camera">Camera</string>
 </resources>

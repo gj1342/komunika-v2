@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,10 +18,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import com.example.komunikav2.R
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -35,17 +29,20 @@ fun EditProfileDialog(
     currentName: String,
     currentAvatar: String,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit,
-    onUploadAvatar: () -> Unit,
-    uploadedAvatarUri: String? = null
+    onSave: (String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
     var avatar by remember { mutableStateOf(currentAvatar) }
     var nameError by remember { mutableStateOf(false) }
-    var avatarError by remember { mutableStateOf(false) }
-    val avatars = listOf("UPLOAD") + listOf("👤", "😊", "🤖", "🎭", "🦊", "🐱", "🐶")
+    val avatars = listOf(
+        "👤", "😊", "🤖", "🎭", "🦊", "🐱", "🐶", "👓", "🎨", "🌟", "💎", "🔥",
+        "😎", "🤠", "👻", "🦄", "🐼", "🐨", "🐯", "🦁", "🐸", "🐙", "🦋", "🦅",
+        "🐬", "🦕", "🦖", "🐉", "🦜", "🦢", "🦚", "🦩", "🦘", "🦡", "🦝", "🦨",
+        "🦥", "🦦", "🦧", "🐒", "🐵", "🐻", "🐻‍❄️", "🐨", "🐯", "🦁", "🐮", "🐷",
+        "🐸", "🐵", "🐔", "🐧", "🐦", "🐤", "🐣", "🦆", "🦅", "🦉", "🦇", "🐺"
+    )
     
-    val isFormValid = name.trim().isNotEmpty() && avatar != "UPLOAD" && (uploadedAvatarUri != null || avatar in avatars.drop(1))
+    val isFormValid = name.trim().isNotEmpty() && avatar in avatars
     
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -75,14 +72,7 @@ fun EditProfileDialog(
                     color = Color.Gray
                 )
                 
-                if (avatarError) {
-                    Text(
-                        text = stringResource(R.string.please_select_avatar),
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
+
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -93,59 +83,28 @@ fun EditProfileDialog(
                     modifier = Modifier.height(120.dp)
                 ) {
                     itemsIndexed(avatars) { index, avatarEmoji ->
-                        if (index == 0) {
-                            // Upload button
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (avatar == "UPLOAD") Color(0xFFE3F2FD) else Color(0xFFF5F5F5)
-                                    )
-                                    .border(
-                                        width = if (avatar == "UPLOAD") 2.dp else 1.dp,
-                                        color = if (avatar == "UPLOAD") Color(0xFF1565C0) else Color.Gray,
-                                        shape = CircleShape
-                                    )
-                                    .clickable { 
-                                        onUploadAvatar()
-                                        avatar = "UPLOAD"
-                                        avatarError = false
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Upload Avatar",
-                                    tint = Color(0xFF1565C0),
-                                    modifier = Modifier.size(28.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (avatar == avatarEmoji) Color(0xFFE3F2FD) 
+                                    else Color(0xFFF5F5F5)
                                 )
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (avatar == avatarEmoji) Color(0xFFE3F2FD) 
-                                        else Color(0xFFF5F5F5)
-                                    )
-                                    .border(
-                                        width = if (avatar == avatarEmoji) 2.dp else 1.dp,
-                                        color = if (avatar == avatarEmoji) Color(0xFF1565C0) else Color.Gray,
-                                        shape = CircleShape
-                                    )
-                                    .clickable { 
-                                        avatar = avatarEmoji
-                                        avatarError = false
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = avatarEmoji,
-                                    fontSize = 24.sp
+                                .border(
+                                    width = if (avatar == avatarEmoji) 2.dp else 1.dp,
+                                    color = if (avatar == avatarEmoji) Color(0xFF1565C0) else Color.Gray,
+                                    shape = CircleShape
                                 )
-                            }
+                                .clickable { 
+                                    avatar = avatarEmoji
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = avatarEmoji,
+                                fontSize = 24.sp
+                            )
                         }
                     }
                 }
@@ -207,9 +166,8 @@ fun EditProfileDialog(
                         onClick = {
                             val trimmedName = name.trim()
                             nameError = trimmedName.isEmpty()
-                            avatarError = avatar == "UPLOAD" && uploadedAvatarUri == null
                             
-                            if (!nameError && !avatarError) {
+                            if (!nameError) {
                                 onSave(trimmedName, avatar)
                             }
                         },

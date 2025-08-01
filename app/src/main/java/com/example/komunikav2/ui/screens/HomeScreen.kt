@@ -16,9 +16,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
 import com.example.komunikav2.R
 import com.example.komunikav2.data.UserDataManager
 import com.example.komunikav2.navigation.Screen
@@ -36,26 +33,6 @@ fun HomeScreen(navController: NavController) {
     var userAvatar by remember { mutableStateOf(userDataManager.getUserAvatar()) }
     var userType by remember { mutableStateOf(userDataManager.getUserType()) }
     var showEditDialog by remember { mutableStateOf(false) }
-    var uploadedAvatarUri by remember { mutableStateOf(userDataManager.getUploadedAvatarUri()) }
-    var showImageSourceDialog by remember { mutableStateOf(false) }
-    
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let {
-            uploadedAvatarUri = it.toString()
-            userDataManager.setUploadedAvatarUri(it.toString())
-        }
-    }
-    
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            // Camera photo was taken successfully
-            // The URI is already set when we launch the camera
-        }
-    }
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -77,7 +54,6 @@ fun HomeScreen(navController: NavController) {
                 userName = userName,
                 userAvatar = userAvatar,
                 userType = userType,
-                uploadedAvatarUri = uploadedAvatarUri,
                 onEditName = {
                     showEditDialog = true
                 },
@@ -143,35 +119,6 @@ fun HomeScreen(navController: NavController) {
                     userAvatar = newAvatar
                     userDataManager.saveUserProfile(newName, newAvatar)
                     showEditDialog = false
-                },
-                onUploadAvatar = {
-                    showImageSourceDialog = true
-                },
-                uploadedAvatarUri = uploadedAvatarUri
-            )
-        }
-        
-        if (showImageSourceDialog) {
-            AlertDialog(
-                onDismissRequest = { showImageSourceDialog = false },
-                title = { Text(stringResource(R.string.choose_image_source)) },
-                text = { Text(stringResource(R.string.select_image_source)) },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showImageSourceDialog = false
-                            galleryLauncher.launch("image/*")
-                        }
-                    ) {
-                        Text(stringResource(R.string.gallery))
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showImageSourceDialog = false }
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
                 }
             )
         }
