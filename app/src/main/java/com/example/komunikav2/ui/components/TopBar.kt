@@ -25,7 +25,8 @@ fun TopBar(
     title: String,
     onBackClick: () -> Unit,
     onClearClick: (() -> Unit)? = null,
-    backgroundColor: androidx.compose.ui.graphics.Color = colorResource(R.color.surface_blue)
+    backgroundColor: androidx.compose.ui.graphics.Color = colorResource(R.color.surface_blue),
+    trailingContent: @Composable (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -57,7 +58,9 @@ fun TopBar(
         
         Spacer(modifier = Modifier.weight(1f))
         
-        if (onClearClick != null) {
+        if (trailingContent != null) {
+            trailingContent()
+        } else if (onClearClick != null) {
             Box(
                 modifier = Modifier
                     .width(64.dp)

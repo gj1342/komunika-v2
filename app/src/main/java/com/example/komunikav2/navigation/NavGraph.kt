@@ -6,6 +6,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.komunikav2.ui.screens.ConnectionScreen
 import com.example.komunikav2.ui.screens.HomeScreen
+import com.example.komunikav2.ui.screens.HearingMultiPhoneChatScreen
+import com.example.komunikav2.ui.screens.DeafMultiPhoneChatScreen
 import com.example.komunikav2.ui.screens.NavigationScreen
 import com.example.komunikav2.ui.screens.SinglePhoneScreen
 import com.example.komunikav2.ui.screens.SplashScreen
@@ -35,6 +37,14 @@ fun NavGraph(navController: NavHostController) {
         
         composable(route = Screen.Multiphone.route) {
             ConnectionScreen(navController = navController)
+        }
+        
+        composable(route = Screen.MultiphoneChat.route) {
+             HearingMultiPhoneChatScreen(navController = navController)
+        }
+                
+        composable(route = Screen.DeafMultiphoneChat.route) {
+            DeafMultiPhoneChatScreen(navController = navController)
         }
         
         composable(route = Screen.Vocabulary.route) {
