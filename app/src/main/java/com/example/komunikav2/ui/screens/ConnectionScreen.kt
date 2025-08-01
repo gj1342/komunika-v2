@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -17,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
+import com.example.komunikav2.data.UserDataManager
+import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.ui.components.InstructionalContent
 import com.example.komunikav2.ui.components.ServerIdInput
 import com.example.komunikav2.ui.components.ServiceStatusImage
@@ -25,6 +28,8 @@ import com.example.komunikav2.ui.components.TopBar
 
 @Composable
 fun ConnectionScreen(navController: NavController) {
+    val context = LocalContext.current
+    val userDataManager = remember { UserDataManager(context) }
     var serverId by remember { mutableStateOf("") }
     
     Box(
@@ -71,7 +76,13 @@ fun ConnectionScreen(navController: NavController) {
                 StartButton(
                     onClick = {
                         if (serverId.isNotBlank()) {
-                            // TODO: Implement connection logic
+                            val userType = userDataManager.getUserType()
+                            if (userType.lowercase() == "non deaf") {
+                                navController.navigate(Screen.MultiphoneChat.route)
+                            } else {
+                                // Deaf users navigate to deaf-specific chat screen
+                                navController.navigate(Screen.DeafMultiphoneChat.route)
+                            }
                         }
                     }
                 )

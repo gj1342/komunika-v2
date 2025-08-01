@@ -6,6 +6,8 @@ sealed class Screen(val route: String) {
     object Navigation : Screen("navigation")
     object Singlephone : Screen("singlephone")
     object Multiphone : Screen("multiphone")
+    object MultiphoneChat : Screen("multiphone_chat")
+    object DeafMultiphoneChat : Screen("deaf_multiphone_chat")
     object Connection : Screen("connection")
     object Vocabulary : Screen("vocabulary")
 } 

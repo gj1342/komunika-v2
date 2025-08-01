@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import com.example.komunikav2.R
-import com.example.komunikav2.ui.components.ChatMessageItem
 import com.example.komunikav2.ui.components.ChatMessage
 import com.example.komunikav2.ui.components.LatestText
 import com.example.komunikav2.ui.components.MessageInput
@@ -97,10 +96,7 @@ fun SinglePhoneScreen(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(messages) { message ->
-                        ChatMessageItem(
-                            text = message.text,
-                            isUser = message.isUser
-                        )
+                        ChatMessage(message = message)
                     }
                 }
                 
