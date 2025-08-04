@@ -19,18 +19,33 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
 import com.example.komunikav2.data.UserDataManager
+import com.example.komunikav2.data.UserProfile
 import com.example.komunikav2.navigation.Screen
+import com.example.komunikav2.services.NearbyConnectionService
+import com.example.komunikav2.ui.components.ConnectionStatusIndicator
 import com.example.komunikav2.ui.components.InstructionalContent
 import com.example.komunikav2.ui.components.ServerIdInput
 import com.example.komunikav2.ui.components.ServiceStatusImage
 import com.example.komunikav2.ui.components.StartButton
 import com.example.komunikav2.ui.components.TopBar
+import androidx.compose.runtime.collectAsState
+import java.util.*
 
 @Composable
 fun ConnectionScreen(navController: NavController) {
     val context = LocalContext.current
     val userDataManager = remember { UserDataManager(context) }
+    val nearbyService = remember { NearbyConnectionService.getInstance(context) }
     var serverId by remember { mutableStateOf("") }
+    
+    val connectionState by nearbyService.connectionState.collectAsState()
+    val connectedUsers by nearbyService.connectedUsers.collectAsState()
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nearbyService.disconnect()
+        }
+    }
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -76,16 +91,36 @@ fun ConnectionScreen(navController: NavController) {
                 StartButton(
                     onClick = {
                         if (serverId.isNotBlank()) {
-                            val userType = userDataManager.getUserType()
-                            if (userType.lowercase() == "non deaf") {
-                                navController.navigate(Screen.MultiphoneChat.route)
-                            } else {
-                                // Deaf users navigate to deaf-specific chat screen
-                                navController.navigate(Screen.DeafMultiphoneChat.route)
-                            }
+                            val userProfile = UserProfile(
+                                id = UUID.randomUUID().toString(),
+                                name = userDataManager.getUserName(),
+                                avatar = userDataManager.getUserAvatar(),
+                                userType = userDataManager.getUserType(),
+                                serviceId = serverId
+                            )
+                            
+                            nearbyService.startAdvertisingAndDiscovery(userProfile)
                         }
                     }
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                ConnectionStatusIndicator(
+                    connectionState = connectionState,
+                    connectedUsersCount = connectedUsers.size
+                )
+                
+                if (connectionState == NearbyConnectionService.ConnectionState.CONNECTED && connectedUsers.isNotEmpty()) {
+                    LaunchedEffect(connectedUsers) {
+                        val userType = userDataManager.getUserType()
+                        if (userType.lowercase() == "non deaf") {
+                            navController.navigate(Screen.MultiphoneChat.route)
+                        } else {
+                            navController.navigate(Screen.DeafMultiphoneChat.route)
+                        }
+                    }
+                }
             }
         }
     }

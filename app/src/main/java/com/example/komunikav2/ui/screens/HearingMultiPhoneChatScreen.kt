@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,50 +20,43 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
 import com.example.komunikav2.data.UserDataManager
+import com.example.komunikav2.data.ChatMessage
+import com.example.komunikav2.services.NearbyConnectionService
 import com.example.komunikav2.ui.components.MultiPhoneChatMessage
 import com.example.komunikav2.ui.components.MultiPhoneMessageInput
 import com.example.komunikav2.ui.components.MultiPhoneUserDropdown
 import com.example.komunikav2.ui.components.TopBar
 import com.example.komunikav2.ui.components.UserTypeIndicator
+import androidx.compose.runtime.collectAsState
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun HearingMultiPhoneChatScreen(navController: NavController) {
     val context = LocalContext.current
     val userDataManager = remember { UserDataManager(context) }
+    val nearbyService = remember { NearbyConnectionService.getInstance(context) }
     
     var currentMessage by remember { mutableStateOf("") }
-    var messages by remember { mutableStateOf(listOf(
-        MultiPhoneChatMessage(
-            id = "1",
-            text = "Ipsum reprehenderit ea nulla velit dolore laborum in id sint tempor et magna tempor veniam. Pariatur cillum venia dolore",
-            isIncoming = true,
-            timestamp = "2 mins ago",
-            avatar = "👩"
-        ),
-        MultiPhoneChatMessage(
-            id = "2",
-            text = "Cupidatat exercitation",
-            isIncoming = true,
-            timestamp = "2 mins ago",
-            avatar = "👩"
-        ),
-        MultiPhoneChatMessage(
-            id = "3",
-            text = "Mollit excepteur eiusmod conse",
-            isIncoming = false,
-            timestamp = "Just now"
-        ),
-        MultiPhoneChatMessage(
-            id = "4",
-            text = "Exercitation ca id",
-            isIncoming = false,
-            timestamp = "Just now"
-        )
-    )) }
     
     val userType = userDataManager.getUserType()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    
+    val connectedUsers by nearbyService.connectedUsers.collectAsState()
+    val messages by nearbyService.messages.collectAsState()
+    
+    val dateFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    
+    // Track which messages have video cards visible
+    var messagesWithVideoCards by remember { mutableStateOf(setOf<String>()) }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            // Don't disconnect here as we want to maintain the connection
+            // The connection will be managed by the service
+        }
+    }
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -83,6 +77,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
                 trailingContent = {
                     MultiPhoneUserDropdown(
+                        connectedUsers = connectedUsers,
                         onUserClick = { user ->
                             // TODO: Handle user selection
                             println("Selected user: ${user.name}")
@@ -102,24 +97,31 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                    reverseLayout = true
                ) {
                    items(messages.reversed()) { message ->
+                       val multiPhoneMessage = MultiPhoneChatMessage(
+                           id = message.id,
+                           text = message.text,
+                           isIncoming = message.isIncoming,
+                           timestamp = dateFormat.format(Date(message.timestamp)),
+                           avatar = message.senderAvatar,
+                           senderName = message.senderName,
+                           showVideoCard = messagesWithVideoCards.contains(message.id)
+                       )
+                       
                        MultiPhoneChatMessage(
-                           message = message,
+                           message = multiPhoneMessage,
                            onMessageClick = { clickedMessage ->
-                               val wasVideoCardVisible = clickedMessage.showVideoCard
-                               val updatedMessages = messages.map { msg ->
-                                   if (msg.id == clickedMessage.id) {
-                                       msg.copy(showVideoCard = !msg.showVideoCard)
-                                   } else {
-                                       msg.copy(showVideoCard = false)
-                                   }
+                               val wasVideoCardVisible = messagesWithVideoCards.contains(clickedMessage.id)
+                               messagesWithVideoCards = if (wasVideoCardVisible) {
+                                   messagesWithVideoCards - clickedMessage.id
+                               } else {
+                                   setOf(clickedMessage.id)
                                }
-                               messages = updatedMessages
                                
                                // Auto-scroll to keep the clicked message visible when video card appears
                                if (!wasVideoCardVisible) {
-                                   val messageIndex = updatedMessages.indexOfFirst { it.id == clickedMessage.id }
+                                   val messageIndex = messages.indexOfFirst { it.id == clickedMessage.id }
                                    if (messageIndex != -1) {
-                                       val reversedIndex = updatedMessages.size - 1 - messageIndex
+                                       val reversedIndex = messages.size - 1 - messageIndex
                                        coroutineScope.launch {
                                            listState.animateScrollToItem(reversedIndex)
                                        }
@@ -134,16 +136,10 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                 message = currentMessage,
                 onMessageChange = { currentMessage = it },
                 onSendClick = {
-                                            if (currentMessage.isNotBlank()) {
-                            val newMessage = MultiPhoneChatMessage(
-                                id = System.currentTimeMillis().toString(),
-                                text = currentMessage,
-                                isIncoming = false,
-                                timestamp = "Just now"
-                            )
-                            messages = messages + newMessage
-                            currentMessage = ""
-                        }
+                    if (currentMessage.isNotBlank()) {
+                        nearbyService.sendMessage(currentMessage)
+                        currentMessage = ""
+                    }
                 },
                 onMicClick = {
                     // TODO: Implement voice input
