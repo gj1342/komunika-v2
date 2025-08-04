@@ -66,10 +66,14 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
         ) {
             TopBar(
                 title = stringResource(R.string.multi_phone_title),
-                onBackClick = { navController.popBackStack() },
+                onBackClick = { 
+                    nearbyService.resetForReconnection()
+                    navController.popBackStack() 
+                },
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
                 trailingContent = {
                     MultiPhoneUserDropdown(
+                        key = connectedUsers.size, // Force recomposition when user count changes
                         connectedUsers = connectedUsers,
                         onUserClick = { user ->
                             // TODO: Handle user selection

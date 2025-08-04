@@ -21,6 +21,7 @@ import com.example.komunikav2.data.UserProfile
 
 @Composable
 fun MultiPhoneUserDropdown(
+    key: Int = 0,
     connectedUsers: List<UserProfile> = emptyList(),
     onUserClick: (UserProfile) -> Unit = {}
 ) {

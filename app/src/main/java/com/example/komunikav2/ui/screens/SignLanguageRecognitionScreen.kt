@@ -18,15 +18,19 @@ import com.example.komunikav2.R
 import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.ui.components.*
 import com.example.komunikav2.services.HandLandmarkerService
+import com.example.komunikav2.services.NearbyConnectionService
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun SignLanguageRecognitionScreen(navController: NavController) {
     var prediction by remember { mutableStateOf("") }
     val context = LocalContext.current
     val handLandmarkerService = remember { HandLandmarkerService(context) }
+    val nearbyService = remember { NearbyConnectionService.getInstance(context) }
     
     val handLandmarks by handLandmarkerService.handLandmarks.collectAsState()
     val isHandDetected by handLandmarkerService.isHandDetected.collectAsState()
+    val connectedUsers by nearbyService.connectedUsers.collectAsState()
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -47,8 +51,11 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
                 trailingContent = {
                     MultiPhoneUserDropdown(
+                        key = connectedUsers.size, // Force recomposition when user count changes
+                        connectedUsers = connectedUsers,
                         onUserClick = { user ->
                             // TODO: Handle user selection
+                            println("Selected user: ${user.name}")
                         }
                     )
                 }
