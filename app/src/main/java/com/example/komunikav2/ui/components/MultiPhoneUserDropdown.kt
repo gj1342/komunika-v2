@@ -17,22 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-data class ConnectedUser(
-    val id: String,
-    val name: String,
-    val avatar: String
-)
+import com.example.komunikav2.data.UserProfile
 
 @Composable
 fun MultiPhoneUserDropdown(
-    connectedUsers: List<ConnectedUser> = listOf(
-        ConnectedUser("1", "John Doe", "👨"),
-        ConnectedUser("2", "Jane Smith", "👩"),
-        ConnectedUser("3", "Mike Johnson", "👦"),
-        ConnectedUser("4", "Sarah Wilson", "👧")
-    ),
-    onUserClick: (ConnectedUser) -> Unit = {}
+    connectedUsers: List<UserProfile> = emptyList(),
+    onUserClick: (UserProfile) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     
@@ -127,12 +117,6 @@ fun MultiPhoneUserDropdown(
             
             DropdownMenuItem(
                 text = { Text("Settings") },
-                onClick = {
-                    expanded = false
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Leave Chat") },
                 onClick = {
                     expanded = false
                 }

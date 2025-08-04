@@ -21,6 +21,7 @@ data class MultiPhoneChatMessage(
     val isIncoming: Boolean,
     val timestamp: String,
     val avatar: String? = null,
+    val senderName: String? = null,
     val showVideoCard: Boolean = false
 )
 
@@ -60,6 +61,17 @@ fun MultiPhoneChatMessage(
             Column(
                 horizontalAlignment = if (message.isIncoming) Alignment.Start else Alignment.End
             ) {
+                // Show sender name for incoming messages
+                if (message.isIncoming && message.senderName != null) {
+                    Text(
+                        text = message.senderName,
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+                
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))

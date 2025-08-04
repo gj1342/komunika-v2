@@ -8,6 +8,7 @@ import com.example.komunikav2.ui.screens.ConnectionScreen
 import com.example.komunikav2.ui.screens.HomeScreen
 import com.example.komunikav2.ui.screens.HearingMultiPhoneChatScreen
 import com.example.komunikav2.ui.screens.DeafMultiPhoneChatScreen
+import com.example.komunikav2.ui.screens.SignLanguageRecognitionScreen
 import com.example.komunikav2.ui.screens.NavigationScreen
 import com.example.komunikav2.ui.screens.SinglePhoneScreen
 import com.example.komunikav2.ui.screens.SplashScreen
@@ -49,6 +50,10 @@ fun NavGraph(navController: NavHostController) {
         
         composable(route = Screen.Vocabulary.route) {
             VocabularyScreen(navController = navController)
+        }
+        
+        composable(route = Screen.SignLanguageRecognition.route) {
+            SignLanguageRecognitionScreen(navController = navController)
         }
     }
 } 
