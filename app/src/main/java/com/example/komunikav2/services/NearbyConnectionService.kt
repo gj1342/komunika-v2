@@ -94,15 +94,31 @@ class NearbyConnectionService private constructor(private val context: Context) 
         
         override fun onDisconnected(endpointId: String) {
             Log.d(TAG, "Disconnected from $endpointId")
+            Log.d(TAG, "Current connected endpoints before removal: $connectedEndpointIds")
+            Log.d(TAG, "Current connected users before removal: ${_connectedUsers.value.map { it.name }}")
+            
             connectedEndpointIds.remove(endpointId)
             sentProfilesToEndpoints.remove(endpointId)
             receivedProfilesFromEndpoints.remove(endpointId)
             removeConnectedUser(endpointId)
             
+            Log.d(TAG, "After removal - connected endpoints: $connectedEndpointIds")
+            Log.d(TAG, "After removal - connected users: ${_connectedUsers.value.map { it.name }}")
+            
             // Update connection state only if no more connected endpoints
             if (connectedEndpointIds.isEmpty()) {
                 _connectionState.value = ConnectionState.DISCONNECTED
                 Log.d(TAG, "No more connected endpoints, setting state to DISCONNECTED")
+                
+                // Auto-restart advertising and discovery if we have a current user profile
+                currentUserProfile?.let { profile ->
+                    Log.d(TAG, "Auto-restarting advertising and discovery after disconnection")
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        if (_connectionState.value == ConnectionState.DISCONNECTED) {
+                            startAdvertisingAndDiscovery(profile)
+                        }
+                    }, 2000) // Wait 2 seconds before restarting
+                }
             } else {
                 Log.d(TAG, "Still have ${connectedEndpointIds.size} connected endpoints")
             }
@@ -224,6 +240,20 @@ class NearbyConnectionService private constructor(private val context: Context) 
         Log.d(TAG, "Disconnected and cleared all connection data")
     }
     
+    fun resetForReconnection() {
+        Log.d(TAG, "Resetting service for reconnection")
+        disconnect()
+        
+        // Clear the current user profile to force a fresh start
+        currentUserProfile = null
+        currentServiceId = null
+        
+        // Add a small delay to ensure everything is cleared
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            Log.d(TAG, "Service reset complete, ready for reconnection")
+        }, 500)
+    }
+    
     fun sendMessage(text: String) {
         Log.d(TAG, "Attempting to send message: '$text'")
         Log.d(TAG, "Connected endpoints: $connectedEndpointIds")
@@ -341,16 +371,28 @@ class NearbyConnectionService private constructor(private val context: Context) 
     }
     
     private fun removeConnectedUser(endpointId: String) {
+        Log.d(TAG, "Removing connected user for endpoint: $endpointId")
+        Log.d(TAG, "Current endpoint to user map: ${endpointToUserMap.keys}")
+        
         // Find the user profile for this endpoint
         val userProfile = endpointToUserMap[endpointId]
         if (userProfile != null) {
             val currentList = _connectedUsers.value.toMutableList()
+            Log.d(TAG, "Current users before removal: ${currentList.map { it.name }}")
+            
             currentList.removeAll { it.id == userProfile.id }
             _connectedUsers.value = currentList
+            
             endpointToUserMap.remove(endpointId)
-            Log.d(TAG, "Removed user ${userProfile.name} for endpoint $endpointId")
+            Log.d(TAG, "Successfully removed user ${userProfile.name} for endpoint $endpointId")
+            Log.d(TAG, "Users after removal: ${currentList.map { it.name }}")
+            
+            // Force refresh to ensure UI updates
+            forceRefreshConnectedUsers()
         } else {
             Log.w(TAG, "No user profile found for endpoint $endpointId")
+            Log.w(TAG, "Available endpoints: ${endpointToUserMap.keys}")
+            Log.w(TAG, "Available users: ${endpointToUserMap.values.map { it.name }}")
         }
     }
     
@@ -366,6 +408,13 @@ class NearbyConnectionService private constructor(private val context: Context) 
     
     fun getConnectionStatus(): String {
         return "State: ${_connectionState.value}, Endpoints: $connectedEndpointIds, Users: ${_connectedUsers.value.map { it.name }}"
+    }
+    
+    fun forceRefreshConnectedUsers() {
+        Log.d(TAG, "Force refreshing connected users")
+        val currentUsers = _connectedUsers.value.toList()
+        _connectedUsers.value = currentUsers
+        Log.d(TAG, "Refreshed users: ${currentUsers.map { it.name }}")
     }
     
     enum class ConnectionState {

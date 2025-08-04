@@ -43,7 +43,8 @@ fun ConnectionScreen(navController: NavController) {
     
     DisposableEffect(Unit) {
         onDispose {
-            nearbyService.disconnect()
+            // Don't disconnect here as we want to maintain the connection
+            // The connection will be managed by the service
         }
     }
     
@@ -89,7 +90,8 @@ fun ConnectionScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(48.dp))
                 
                 StartButton(
-                    onClick = {
+                    connectionState = connectionState,
+                    onStartClick = {
                         if (serverId.isNotBlank()) {
                             val userProfile = UserProfile(
                                 id = UUID.randomUUID().toString(),
@@ -101,6 +103,9 @@ fun ConnectionScreen(navController: NavController) {
                             
                             nearbyService.startAdvertisingAndDiscovery(userProfile)
                         }
+                    },
+                    onCancelClick = {
+                        nearbyService.resetForReconnection()
                     }
                 )
                 

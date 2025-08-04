@@ -28,6 +28,7 @@ import com.example.komunikav2.ui.components.MultiPhoneUserDropdown
 import com.example.komunikav2.ui.components.TopBar
 import com.example.komunikav2.ui.components.UserTypeIndicator
 import androidx.compose.runtime.collectAsState
+import com.example.komunikav2.navigation.Screen
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -73,10 +74,14 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
         ) {
             TopBar(
                 title = stringResource(R.string.multi_phone_title),
-                onBackClick = { navController.popBackStack() },
+                onBackClick = { 
+                    nearbyService.resetForReconnection()
+                    navController.popBackStack() 
+                },
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
                 trailingContent = {
                     MultiPhoneUserDropdown(
+                        key = connectedUsers.size, // Force recomposition when user count changes
                         connectedUsers = connectedUsers,
                         onUserClick = { user ->
                             // TODO: Handle user selection
@@ -145,7 +150,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                     // TODO: Implement voice input
                 },
                 onCameraClick = {
-                    // TODO: Implement camera functionality
+                    navController.navigate(Screen.SignLanguageRecognition.route)
                 }
             )
         }

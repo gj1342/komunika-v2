@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,27 +24,28 @@ fun ConnectionStatusIndicator(
 ) {
     val (backgroundColor, textColor, statusText) = when (connectionState) {
         NearbyConnectionService.ConnectionState.DISCONNECTED -> {
-            Triple(Color.Gray.copy(alpha = 0.3f), Color.Gray, "Disconnected")
+            Triple(Color.White.copy(alpha = 0.9f), Color.Black, "Disconnected")
         }
         NearbyConnectionService.ConnectionState.ADVERTISING -> {
-            Triple(Color.Blue.copy(alpha = 0.3f), Color.Blue, "Advertising...")
+            Triple(Color.White.copy(alpha = 0.9f), Color(0xFF1565C0), "Advertising...")
         }
         NearbyConnectionService.ConnectionState.DISCOVERING -> {
-            Triple(Color.Yellow.copy(alpha = 0.3f), Color.Yellow, "Discovering...")
+            Triple(Color.White.copy(alpha = 0.9f), Color(0xFFFF8F00), "Discovering...")
         }
         NearbyConnectionService.ConnectionState.CONNECTING -> {
-            Triple(Color(0xFFFF9800).copy(alpha = 0.3f), Color(0xFFFF9800), "Connecting...")
+            Triple(Color.White.copy(alpha = 0.9f), Color(0xFFFF6F00), "Connecting...")
         }
         NearbyConnectionService.ConnectionState.CONNECTED -> {
-            Triple(Color.Green.copy(alpha = 0.3f), Color.Green, "Connected ($connectedUsersCount users)")
+            Triple(Color.White.copy(alpha = 0.9f), Color(0xFF2E7D32), "Connected ($connectedUsersCount users)")
         }
         NearbyConnectionService.ConnectionState.ERROR -> {
-            Triple(Color.Red.copy(alpha = 0.3f), Color.Red, "Error")
+            Triple(Color.White.copy(alpha = 0.9f), Color(0xFFD32F2F), "Error")
         }
     }
     
     Row(
         modifier = modifier
+            .shadow(4.dp, RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -51,7 +53,7 @@ fun ConnectionStatusIndicator(
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(10.dp)
                 .clip(CircleShape)
                 .background(textColor)
         )
