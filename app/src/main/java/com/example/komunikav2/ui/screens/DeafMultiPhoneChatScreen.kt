@@ -67,7 +67,7 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
             TopBar(
                 title = stringResource(R.string.multi_phone_title),
                 onBackClick = { 
-                    nearbyService.resetForReconnection()
+                    nearbyService.disconnect()
                     navController.popBackStack() 
                 },
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
