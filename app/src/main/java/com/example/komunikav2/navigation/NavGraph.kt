@@ -17,6 +17,7 @@ import com.example.komunikav2.ui.screens.SplashScreen
 import com.example.komunikav2.ui.screens.VocabularyScreen
 import com.example.komunikav2.ui.screens.CategoryScreen
 import com.example.komunikav2.ui.screens.NumbersScreen
+import com.example.komunikav2.ui.screens.CategoryFSLVideoScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -68,6 +69,16 @@ fun NavGraph(navController: NavHostController) {
         
         composable(route = Screen.Numbers.route) {
             NumbersScreen(navController = navController)
+        }
+        
+        composable(
+            route = Screen.CategoryFSLVideo.route,
+            arguments = listOf(
+                navArgument("category") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val category = backStackEntry.arguments?.getString("category") ?: ""
+            CategoryFSLVideoScreen(navController = navController, category = category)
         }
         
         composable(route = Screen.SignLanguageRecognition.route) {
