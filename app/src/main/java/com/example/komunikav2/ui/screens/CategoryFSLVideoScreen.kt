@@ -2,9 +2,6 @@ package com.example.komunikav2.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,14 +11,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
-import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.services.LabelService
-import com.example.komunikav2.ui.components.CategoryButton
+import com.example.komunikav2.ui.components.CategoryFilterButtons
+import com.example.komunikav2.ui.components.PlayButton
 import com.example.komunikav2.ui.components.TopBar
+import com.example.komunikav2.ui.components.VideoCard
 import kotlinx.coroutines.launch
 
 @Composable
-fun CategoryScreen(
+fun CategoryFSLVideoScreen(
     navController: NavController,
     category: String
 ) {
@@ -30,6 +28,7 @@ fun CategoryScreen(
     val coroutineScope = rememberCoroutineScope()
     
     var labels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedLabel by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     
     val categoryTitle = labelService.getCategoryTitle(category)
@@ -37,6 +36,9 @@ fun CategoryScreen(
     LaunchedEffect(category) {
         coroutineScope.launch {
             labels = labelService.loadLabelsForCategory(category)
+            if (labels.isNotEmpty()) {
+                selectedLabel = labels.first()
+            }
             isLoading = false
         }
     }
@@ -66,30 +68,38 @@ fun CategoryScreen(
                     androidx.compose.material3.CircularProgressIndicator()
                 }
             } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                CategoryFilterButtons(
+                    labels = labels,
+                    selectedLabel = selectedLabel ?: "",
+                    onLabelSelected = { label ->
+                        selectedLabel = label
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(labels) { label ->
-                        CategoryButton(
-                            text = label.replace("_", " ").capitalize(),
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        VideoCard()
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        PlayButton(
                             onClick = {
-                                navController.navigate(Screen.CategoryFSLVideo.createRoute(category))
-                            },
-                            modifier = Modifier.height(56.dp)
+                                // TODO: Handle video play for selected label
+                                println("Playing video for: ${selectedLabel}")
+                            }
                         )
                     }
                 }
             }
         }
-    }
-}
-
-private fun String.capitalize(): String {
-    return this.split(" ").joinToString(" ") { word ->
-        word.lowercase().replaceFirstChar { it.uppercase() }
     }
 }
