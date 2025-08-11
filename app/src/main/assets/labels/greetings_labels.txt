@@ -1,0 +1,14 @@
+hi
+hello
+good_morning
+good_afternoon
+good_evening
+how_are_you
+fine
+okay
+nice_to_meet_you
+see_you_later
+see_you_tomorrow
+sorry
+thank_you
+welcome

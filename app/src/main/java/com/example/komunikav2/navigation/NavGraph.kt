@@ -2,8 +2,10 @@ package com.example.komunikav2.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.komunikav2.ui.screens.ConnectionScreen
 import com.example.komunikav2.ui.screens.HomeScreen
 import com.example.komunikav2.ui.screens.HearingMultiPhoneChatScreen
@@ -13,6 +15,9 @@ import com.example.komunikav2.ui.screens.NavigationScreen
 import com.example.komunikav2.ui.screens.SinglePhoneScreen
 import com.example.komunikav2.ui.screens.SplashScreen
 import com.example.komunikav2.ui.screens.VocabularyScreen
+import com.example.komunikav2.ui.screens.CategoryScreen
+import com.example.komunikav2.ui.screens.NumbersScreen
+import com.example.komunikav2.ui.screens.CategoryFSLVideoScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -50,6 +55,30 @@ fun NavGraph(navController: NavHostController) {
         
         composable(route = Screen.Vocabulary.route) {
             VocabularyScreen(navController = navController)
+        }
+        
+        composable(
+            route = Screen.Category.route,
+            arguments = listOf(
+                navArgument("category") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val category = backStackEntry.arguments?.getString("category") ?: ""
+            CategoryScreen(navController = navController, category = category)
+        }
+        
+        composable(route = Screen.Numbers.route) {
+            NumbersScreen(navController = navController)
+        }
+        
+        composable(
+            route = Screen.CategoryFSLVideo.route,
+            arguments = listOf(
+                navArgument("category") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val category = backStackEntry.arguments?.getString("category") ?: ""
+            CategoryFSLVideoScreen(navController = navController, category = category)
         }
         
         composable(route = Screen.SignLanguageRecognition.route) {

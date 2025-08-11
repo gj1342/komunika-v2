@@ -1,0 +1,17 @@
+always
+daily
+early
+hours
+late
+later
+minutes
+never
+now
+recently
+seconds
+soon
+time
+today
+tomorrow
+year
+yesterday
