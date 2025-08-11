@@ -10,5 +10,9 @@ sealed class Screen(val route: String) {
     object DeafMultiphoneChat : Screen("deaf_multiphone_chat")
     object Connection : Screen("connection")
     object Vocabulary : Screen("vocabulary")
+    object Category : Screen("category/{category}") {
+        fun createRoute(category: String) = "category/$category"
+    }
+    object Numbers : Screen("numbers")
     object SignLanguageRecognition : Screen("sign_language_recognition")
 } 
