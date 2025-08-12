@@ -27,6 +27,7 @@ import com.example.komunikav2.ui.components.MultiPhoneMessageInput
 import com.example.komunikav2.ui.components.MultiPhoneUserDropdown
 import com.example.komunikav2.ui.components.TopBar
 import com.example.komunikav2.ui.components.UserTypeIndicator
+import com.example.komunikav2.ui.components.HearingCameraPopup
 import androidx.compose.runtime.collectAsState
 import com.example.komunikav2.navigation.Screen
 import java.text.SimpleDateFormat
@@ -39,6 +40,8 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
     val nearbyService = remember { NearbyConnectionService.getInstance(context) }
     
     var currentMessage by remember { mutableStateOf("") }
+    var showCameraPopup by remember { mutableStateOf(false) }
+    var predictionMessage by remember { mutableStateOf("") }
     
     val userType = userDataManager.getUserType()
     val listState = rememberLazyListState()
@@ -93,7 +96,18 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
             
             UserTypeIndicator(userType)
             
-                           LazyColumn(
+            // Camera Popup
+            if (showCameraPopup) {
+                HearingCameraPopup(
+                    onClose = { showCameraPopup = false },
+                    predictionMessage = predictionMessage,
+                    onPredictionChange = { message ->
+                        predictionMessage = message
+                    }
+                )
+            }
+            
+            LazyColumn(
                    state = listState,
                    modifier = Modifier
                        .fillMaxWidth()
@@ -150,7 +164,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                     // TODO: Implement voice input
                 },
                 onCameraClick = {
-                    navController.navigate(Screen.SignLanguageRecognition.route)
+                    showCameraPopup = true
                 }
             )
         }
