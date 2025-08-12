@@ -75,7 +75,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
             TopBar(
                 title = stringResource(R.string.multi_phone_title),
                 onBackClick = { 
-                    nearbyService.disconnect()
+                    nearbyService.resetForReconnection()
                     navController.popBackStack() 
                 },
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,

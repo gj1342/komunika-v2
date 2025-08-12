@@ -150,6 +150,12 @@ class NearbyConnectionService private constructor(private val context: Context) 
             Log.d(TAG, "Service ID: ${discoveredEndpointInfo.serviceId}, Current Service ID: $currentServiceId")
             val serviceId = discoveredEndpointInfo.serviceId
             if (serviceId == currentServiceId) {
+                // Check if we're already connected to this endpoint
+                if (connectedEndpointIds.contains(endpointId)) {
+                    Log.d(TAG, "Already connected to endpoint $endpointId, skipping connection request")
+                    return
+                }
+                
                 Log.d(TAG, "Service IDs match, requesting connection to $endpointId")
                 connectionsClient.requestConnection(
                     generateEndpointName(),
@@ -230,6 +236,13 @@ class NearbyConnectionService private constructor(private val context: Context) 
     fun disconnect() {
         connectionsClient.stopAdvertising()
         connectionsClient.stopDiscovery()
+        
+        // Properly disconnect from all connected endpoints
+        for (endpointId in connectedEndpointIds.toList()) {
+            Log.d(TAG, "Disconnecting from endpoint: $endpointId")
+            connectionsClient.disconnectFromEndpoint(endpointId)
+        }
+        
         connectedEndpointIds.clear()
         sentProfilesToEndpoints.clear()
         receivedProfilesFromEndpoints.clear()
@@ -248,10 +261,10 @@ class NearbyConnectionService private constructor(private val context: Context) 
         currentUserProfile = null
         currentServiceId = null
         
-        // Add a small delay to ensure everything is cleared
+        // Add a longer delay to ensure API state is properly cleared
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             Log.d(TAG, "Service reset complete, ready for reconnection")
-        }, 500)
+        }, 2000) // Increased delay to 2 seconds
     }
     
     fun sendMessage(text: String) {
