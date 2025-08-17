@@ -32,10 +32,14 @@ import com.example.komunikav2.ui.components.*
 import com.example.komunikav2.services.HandLandmarkerService
 import com.example.komunikav2.services.NearbyConnectionService
 import androidx.compose.runtime.collectAsState
+import android.util.Log
 
 @Composable
 fun SignLanguageRecognitionScreen(navController: NavController) {
     var prediction by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var currentSentence by remember { mutableStateOf("") }
+    var predictionHistory by remember { mutableStateOf<List<String>>(emptyList()) }
     val context = LocalContext.current
     val handLandmarkerService = remember { HandLandmarkerService(context) }
     val nearbyService = remember { NearbyConnectionService.getInstance(context) }
@@ -43,6 +47,29 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
     val handLandmarks by handLandmarkerService.handLandmarks.collectAsState()
     val isHandDetected by handLandmarkerService.isHandDetected.collectAsState()
     val connectedUsers by nearbyService.connectedUsers.collectAsState()
+    
+    // Set up the listener
+    LaunchedEffect(handLandmarkerService) {
+        handLandmarkerService.setListener(object : HandLandmarkerService.LandmarkerListener {
+            override fun onResults(resultBundle: HandLandmarkerService.ResultBundle) {
+                // Handle hand detection results if needed
+            }
+            
+            override fun onError(error: String, errorCode: Int) {
+                Log.e("SignLanguageRecognition", "Error: $error (Code: $errorCode)")
+            }
+            
+            override fun onPrediction(prediction: String) {
+                // Update the current sentence from the service
+                currentSentence = handLandmarkerService.getCurrentSentence()
+                predictionHistory = handLandmarkerService.getPredictionHistory()
+                
+                Log.d("SignLanguageRecognition", "New prediction: $prediction")
+                Log.d("SignLanguageRecognition", "Current sentence: $currentSentence")
+                Log.d("SignLanguageRecognition", "Prediction history: $predictionHistory")
+            }
+        })
+    }
     
     // All 18 vocabulary categories
     val vocabularyCategories = listOf(
@@ -54,7 +81,9 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
         VocabularyCategory(R.drawable.calendar, R.string.calendar, R.color.button_purple, "calendar"),
         VocabularyCategory(R.drawable.time, R.string.time, R.color.button_light_blue, "time"),
         VocabularyCategory(R.drawable.money_matters, R.string.money_matters, R.color.button_green, "money_matters"),
-        VocabularyCategory(R.drawable.numbers, R.string.numbers, R.color.button_teal, "numbers"),
+        VocabularyCategory(R.drawable.numbers, R.string.numbers_1_10, R.color.button_teal, "numbers1-10"),
+        VocabularyCategory(R.drawable.numbers, R.string.numbers_11_19, R.color.button_teal, "numbers11-19"),
+        VocabularyCategory(R.drawable.numbers, R.string.numbers_20_100, R.color.button_teal, "numbers20-100"),
         VocabularyCategory(R.drawable.people, R.string.people, R.color.button_brown_orange, "people"),
         VocabularyCategory(R.drawable.place, R.string.place, R.color.button_pink_purple, "places"),
         VocabularyCategory(R.drawable.family, R.string.family, R.color.button_peach_orange, "family"),
@@ -65,6 +94,14 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
         VocabularyCategory(R.drawable.adjectives_and_adverbs, R.string.adjectives_adverbs, R.color.button_light_green, "adjectives_and_adverbs"),
         VocabularyCategory(R.drawable.alphabets, R.string.alphabets, R.color.button_light_teal_green, "alphabets")
     )
+    
+    // Handle prediction updates from HandLandmarkerService
+    LaunchedEffect(Unit) {
+        handLandmarkerService.prediction.collect { newPrediction ->
+            prediction = newPrediction
+            Log.d("SignLanguageRecognition", "Prediction StateFlow updated: '$newPrediction'")
+        }
+    }
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -110,7 +147,8 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(300.dp)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp),
+                handLandmarkerService = handLandmarkerService
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -129,16 +167,22 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             rowCategories.forEach { category ->
+                                val isModelAvailable = category.categoryKey in listOf(
+                                    "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
+                                    "people", "places", "questions", "time"
+                                )
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = colorResource(id = category.colorResId),
+                                    backgroundColor = if (isModelAvailable) {
+                                        colorResource(id = category.colorResId)
+                                    } else {
+                                        Color.Gray.copy(alpha = 0.5f)
+                                    },
                                     onClick = { 
-                                        if (category.categoryKey == "numbers") {
-                                            navController.navigate(Screen.Numbers.route)
-                                        } else {
-                                            navController.navigate(Screen.Category.createRoute(category.categoryKey))
-                                        }
+                                        selectedCategory = category.categoryKey
+                                        Log.d("SignLanguageRecognition", "Selected category: $selectedCategory")
+                                        handLandmarkerService.loadModelsAndLabels(category.categoryKey)
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
@@ -156,17 +200,30 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(80.dp)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color(0xFFFFF9C4))
                     .padding(12.dp)
             ) {
-                Text(
-                    text = if (isHandDetected) "Hand detected - analyzing sign..." else prediction.ifEmpty { "Prediction message here..." },
-                    fontSize = 14.sp,
-                    color = Color.Black,
-                    fontWeight = FontWeight.Normal
-                )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    item {
+                        Text(
+                            text = when {
+                                currentSentence.isNotBlank() -> currentSentence
+                                prediction.isNotBlank() -> prediction
+                                selectedCategory == null -> "Select a category to start recognition"
+                                isHandDetected -> "Analyzing..."
+                                else -> "Ready for sign recognition"
+                            },
+                            fontSize = 16.sp,
+                            color = Color.Black,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
             
             // Action Buttons
@@ -179,12 +236,24 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                 // Wrong Sign Button
                 Button(
                     onClick = {
-                        // TODO: Handle wrong sign feedback
+                        if (predictionHistory.isNotEmpty()) {
+                            // Remove the last prediction
+                            val newHistory = predictionHistory.dropLast(1)
+                            predictionHistory = newHistory
+                            
+                            // Rebuild the sentence
+                            val newSentence = newHistory.joinToString(" ")
+                            currentSentence = newSentence
+                            
+                            // Update the service
+                            handLandmarkerService.rebuildSentenceFromHistory(newHistory)
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                         containerColor = Color.Red
-                    )
+                    ),
+                    enabled = predictionHistory.isNotEmpty()
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -199,16 +268,28 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                 // Send Button
                 Button(
                     onClick = {
-                        if (prediction.isNotBlank()) {
-                            // TODO: Handle send prediction
-                            prediction = ""
+                        if (currentSentence.isNotBlank()) {
+                            // Send the sentence to all connected devices
+                            nearbyService.sendMessage(currentSentence)
+                            Log.d("SignLanguageRecognition", "Sending sentence to all connected devices: $currentSentence")
+                            
+                            // Clear the sentence after sending
+                            handLandmarkerService.clearPrediction()
+                            currentSentence = ""
+                            predictionHistory = emptyList()
+                            
+                            // Release hand landmarker service to stop prediction
+                            handLandmarkerService.release()
+                            
+                            // Navigate back to chat screen
+                            navController.popBackStack()
                         }
                     },
                     modifier = Modifier.weight(1f),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                         containerColor = Color.Green
                     ),
-                    enabled = prediction.isNotBlank()
+                    enabled = currentSentence.isNotBlank()
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,

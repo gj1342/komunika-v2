@@ -8,6 +8,7 @@ import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.os.SystemClock
+import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mediapipe.framework.image.BitmapImageBuilder
@@ -17,6 +18,9 @@ import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 
 class HandLandmarkerHelper(
@@ -27,6 +31,16 @@ class HandLandmarkerHelper(
     
     private var handLandmarker: HandLandmarker? = null
     private var isFrontCamera = false
+    private var signLanguagePredictor: SignLanguagePredictor? = null
+    private var landmarkBuffer: MutableList<List<Float>> = mutableListOf()
+    private var currentCategory: String? = null
+    private var isPredicting = false
+    
+    companion object {
+        private const val TAG = "HandLandmarkerHelper"
+        private const val BUFFER_SIZE = 30
+        private const val PREDICTION_THRESHOLD = 0.7f
+    }
     
     interface LandmarkerListener {
         fun onResults(resultBundle: ResultBundle)
@@ -42,6 +56,7 @@ class HandLandmarkerHelper(
     
     init {
         setupHandLandmarker()
+        signLanguagePredictor = SignLanguagePredictor(context)
     }
     
     private fun setupHandLandmarker() {
@@ -61,6 +76,10 @@ class HandLandmarkerHelper(
                 .setResultListener { result, image ->
                     val inferenceTime = SystemClock.uptimeMillis()
                     handLandmarkerHelperListener.onResults(ResultBundle(result, image, inferenceTime))
+                    
+                    if (result.landmarks().isNotEmpty()) {
+                        processLandmarksForPrediction(result.landmarks()[0])
+                    }
                 }
                 .setErrorListener { error ->
                     handLandmarkerHelperListener.onError(error.message ?: "Unknown error", -1)
@@ -150,15 +169,75 @@ class HandLandmarkerHelper(
     }
     
     fun loadModelsAndLabels(category: String) {
-        // This would load specific sign language models based on category
-        // For now, we'll just use the basic hand landmarker
-        handLandmarkerHelperListener.onPrediction("Hand detected in category: $category")
+        currentCategory = category
+        landmarkBuffer.clear()
+        isPredicting = false
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val success = signLanguagePredictor?.loadModel(category) ?: false
+                if (success) {
+                    Log.d(TAG, "Model loaded successfully for category: $category")
+                    handLandmarkerHelperListener.onPrediction("Model loaded for $category")
+                } else {
+                    Log.e(TAG, "Failed to load model for category: $category")
+                    handLandmarkerHelperListener.onPrediction("Failed to load model for $category")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading model for category: $category", e)
+                handLandmarkerHelperListener.onPrediction("Error loading model for $category")
+            }
+        }
+    }
+    
+    private fun processLandmarksForPrediction(landmarks: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>) {
+        if (currentCategory == null || signLanguagePredictor?.isModelLoaded() != true) {
+            return
+        }
+        
+        val landmarkData = landmarks.flatMap { landmark ->
+            listOf(landmark.x(), landmark.y(), landmark.z())
+        }
+        
+        landmarkBuffer.add(landmarkData)
+        
+        if (landmarkBuffer.size > BUFFER_SIZE) {
+            landmarkBuffer.removeAt(0)
+        }
+        
+        if (landmarkBuffer.size == BUFFER_SIZE && !isPredicting) {
+            makePrediction()
+        }
+    }
+    
+    private fun makePrediction() {
+        if (isPredicting) return
+        
+        isPredicting = true
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val result = signLanguagePredictor?.predict(landmarkBuffer.toList())
+                if (result != null && result.confidence >= PREDICTION_THRESHOLD) {
+                    handLandmarkerHelperListener.onPrediction("${result.prediction} (${(result.confidence * 100).toInt()}%)")
+                } else if (result != null) {
+                    handLandmarkerHelperListener.onPrediction("Low confidence: ${result.prediction} (${(result.confidence * 100).toInt()}%)")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error making prediction", e)
+            } finally {
+                isPredicting = false
+            }
+        }
     }
     
     fun unloadModels() {
         try {
             handLandmarker?.close()
             handLandmarker = null
+            signLanguagePredictor?.unloadModel()
+            currentCategory = null
+            landmarkBuffer.clear()
+            isPredicting = false
         } catch (e: Exception) {
             handLandmarkerHelperListener.onError("Error unloading models: ${e.message}", -1)
         }

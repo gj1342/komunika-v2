@@ -24,7 +24,7 @@ class CameraService(private val context: Context) {
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     private var currentPreviewView: PreviewView? = null
-    private var handLandmarkerHelper: HandLandmarkerHelper? = null
+    private var handLandmarkerService: HandLandmarkerService? = null
     
     enum class CameraType {
         FRONT, BACK
@@ -34,21 +34,31 @@ class CameraService(private val context: Context) {
         previewView: PreviewView,
         lifecycleOwner: LifecycleOwner,
         executor: Executor,
-        handLandmarkerHelper: HandLandmarkerHelper? = null,
+        handLandmarkerService: HandLandmarkerService? = null,
         onSuccess: () -> Unit = {},
         onError: (Exception) -> Unit = {}
     ) {
+        // Prevent multiple initializations
+        if (_isCameraActive.value) {
+            android.util.Log.d("CameraService", "Camera already active, skipping initialization")
+            onSuccess()
+            return
+        }
+        
+        android.util.Log.d("CameraService", "Initializing camera...")
         currentPreviewView = previewView
-        this.handLandmarkerHelper = handLandmarkerHelper
+        this.handLandmarkerService = handLandmarkerService
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             try {
                 cameraProvider = cameraProviderFuture.get()
                 setupCamera(previewView, lifecycleOwner, executor)
                 _isCameraActive.value = true
+                android.util.Log.d("CameraService", "Camera initialized successfully")
                 onSuccess()
             } catch (e: Exception) {
                 _isCameraActive.value = false
+                android.util.Log.e("CameraService", "Camera initialization failed", e)
                 onError(e)
             }
         }, executor)
@@ -61,32 +71,47 @@ class CameraService(private val context: Context) {
     ) {
         val cameraProvider = cameraProvider ?: return
         
-        preview = Preview.Builder().build()
-        preview?.setSurfaceProvider(previewView.surfaceProvider)
+        android.util.Log.d("CameraService", "Setting up camera...")
         
-        val imageAnalyzer = ImageAnalysis.Builder()
+        // Update camera type in HandLandmarkerService
+        handLandmarkerService?.setCameraType(_currentCamera.value == CameraType.FRONT)
+        
+        // Unbind any existing use cases first
+        try {
+            cameraProvider.unbindAll()
+            android.util.Log.d("CameraService", "Unbound existing use cases")
+        } catch (e: Exception) {
+            android.util.Log.w("CameraService", "Error unbinding existing use cases", e)
+        }
+        
+        preview = Preview.Builder()
+            .setTargetRotation(previewView.display.rotation)
+            .build()
+        preview?.setSurfaceProvider(previewView.surfaceProvider)
+        android.util.Log.d("CameraService", "Preview configured")
+        
+        val imageAnalyzer = handLandmarkerService?.createImageAnalysis() ?: ImageAnalysis.Builder()
+            .setTargetRotation(previewView.display.rotation)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
-            .also {
-                it.setAnalyzer(executor) { imageProxy ->
-                    handLandmarkerHelper?.detectLiveStream(imageProxy, _currentCamera.value == CameraType.FRONT)
-                }
-            }
+        android.util.Log.d("CameraService", "Image analyzer configured")
         
         val cameraSelector = when (_currentCamera.value) {
             CameraType.FRONT -> CameraSelector.DEFAULT_FRONT_CAMERA
             CameraType.BACK -> CameraSelector.DEFAULT_BACK_CAMERA
         }
+        android.util.Log.d("CameraService", "Using camera: ${_currentCamera.value}")
         
         try {
-            cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 cameraSelector,
                 preview!!,
                 imageAnalyzer
             )
+            android.util.Log.d("CameraService", "Camera bound to lifecycle successfully")
         } catch (e: Exception) {
+            android.util.Log.e("CameraService", "Failed to bind camera to lifecycle", e)
             throw e
         }
     }
@@ -100,8 +125,14 @@ class CameraService(private val context: Context) {
             CameraType.BACK -> CameraType.FRONT
         }
         
+        // Update camera type in HandLandmarkerService
+        handLandmarkerService?.setCameraType(_currentCamera.value == CameraType.FRONT)
+        
         if (_isCameraActive.value && currentPreviewView != null) {
+            // Reset camera active state to force reinitialization
+            _isCameraActive.value = false
             setupCamera(currentPreviewView!!, lifecycleOwner, executor)
+            _isCameraActive.value = true
         }
     }
     

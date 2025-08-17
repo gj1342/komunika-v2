@@ -40,6 +40,9 @@
     <string name="time">Time</string>
     <string name="money_matters">Money Matters</string>
     <string name="numbers">Numbers</string>
+    <string name="numbers_1_10">1-10</string>
+    <string name="numbers_11_19">11-19</string>
+    <string name="numbers_20_100">20-100</string>
     <string name="people">People</string>
     <string name="place">Place</string>
     <string name="family">Family</string>
