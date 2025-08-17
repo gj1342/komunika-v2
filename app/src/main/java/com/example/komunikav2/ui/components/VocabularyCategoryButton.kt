@@ -26,32 +26,32 @@ fun VocabularyCategoryButton(
     backgroundColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    width: Dp = 100.dp
+    width: Dp = 80.dp
 ) {
     Column(
         modifier = modifier
             .width(width)
-            .height(100.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .height(80.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Image(
             painter = painterResource(id = iconResId),
             contentDescription = text,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(32.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = text,
             color = Color.Black,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
-            lineHeight = 12.sp
+            lineHeight = 11.sp
         )
     }
 } 

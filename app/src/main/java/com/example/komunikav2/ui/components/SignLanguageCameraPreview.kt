@@ -33,7 +33,8 @@ import com.example.komunikav2.ui.components.HandLandmarkOverlay
 
 @Composable
 fun SignLanguageCameraPreview(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    handLandmarkerService: com.example.komunikav2.services.HandLandmarkerService? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -44,11 +45,30 @@ fun SignLanguageCameraPreview(
     }
     
     val cameraService = remember { CameraService(context) }
-    var handLandmarkerHelper by remember { mutableStateOf<HandLandmarkerHelper?>(null) }
     var isHandDetected by remember { mutableStateOf(false) }
     var handLandmarkerResult by remember { mutableStateOf<com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult?>(null) }
     
     val currentCamera by cameraService.currentCamera.collectAsState()
+    val isCameraActive by cameraService.isCameraActive.collectAsState()
+    
+    // Use the provided HandLandmarkerService or create a new one
+    val landmarkerService = handLandmarkerService ?: remember { 
+        com.example.komunikav2.services.HandLandmarkerService(context) 
+    }
+    
+    // Collect hand detection state from the service
+    val isHandDetectedFromService by landmarkerService.isHandDetected.collectAsState()
+    val handLandmarksFromService by landmarkerService.handLandmarks.collectAsState()
+    
+    LaunchedEffect(isHandDetectedFromService) {
+        isHandDetected = isHandDetectedFromService
+    }
+    
+    LaunchedEffect(handLandmarksFromService) {
+        if (handLandmarksFromService.isNotEmpty()) {
+            handLandmarkerResult = handLandmarksFromService.first()
+        }
+    }
     
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -65,7 +85,7 @@ fun SignLanguageCameraPreview(
     DisposableEffect(lifecycleOwner) {
         onDispose {
             cameraService.releaseCamera()
-            handLandmarkerHelper?.unloadModels()
+            landmarkerService.release()
         }
     }
     
@@ -79,51 +99,31 @@ fun SignLanguageCameraPreview(
         contentAlignment = Alignment.Center
     ) {
         if (hasCameraPermission) {
-            // Initialize HandLandmarkerHelper
-            LaunchedEffect(Unit) {
-                if (handLandmarkerHelper == null) {
-                    handLandmarkerHelper = HandLandmarkerHelper(
-                        context = context,
-                        runningMode = com.google.mediapipe.tasks.vision.core.RunningMode.LIVE_STREAM,
-                        handLandmarkerHelperListener = object : HandLandmarkerHelper.LandmarkerListener {
-                            override fun onResults(resultBundle: HandLandmarkerHelper.ResultBundle) {
-                                isHandDetected = resultBundle.results.landmarks().isNotEmpty()
-                                handLandmarkerResult = resultBundle.results
-                            }
-                            
-                            override fun onError(error: String, errorCode: Int) {
-                                // Handle error
-                            }
-                            
-                            override fun onPrediction(prediction: String) {
-                                // Handle prediction
-                            }
-                        }
-                    )
-                }
-            }
-            
             // Camera preview
             AndroidView(
                 factory = { ctx ->
                     PreviewView(ctx).apply {
-                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
                 update = { previewView ->
-                    cameraService.initializeCamera(
-                        previewView = previewView,
-                        lifecycleOwner = lifecycleOwner,
-                        executor = ContextCompat.getMainExecutor(context),
-                        handLandmarkerHelper = handLandmarkerHelper,
-                        onSuccess = {
-                            // Camera initialized successfully
-                        },
-                        onError = { e ->
-                            e.printStackTrace()
-                        }
-                    )
+                    // Initialize camera only once
+                    if (!isCameraActive) {
+                        cameraService.initializeCamera(
+                            previewView = previewView,
+                            lifecycleOwner = lifecycleOwner,
+                            executor = ContextCompat.getMainExecutor(context),
+                            handLandmarkerService = landmarkerService,
+                            onSuccess = {
+                                // Camera initialized successfully
+                            },
+                            onError = { e ->
+                                e.printStackTrace()
+                            }
+                        )
+                    }
                 }
             )
             

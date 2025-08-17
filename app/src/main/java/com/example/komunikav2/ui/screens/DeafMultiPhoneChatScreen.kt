@@ -44,6 +44,12 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
     // Track which messages have video cards visible
     var messagesWithVideoCards by remember { mutableStateOf(setOf<String>()) }
     
+    // Track vocabulary modal visibility
+    var showVocabularyModal by remember { mutableStateOf(false) }
+    
+    // Track prediction message
+    var predictionMessage by remember { mutableStateOf("") }
+    
     DisposableEffect(Unit) {
         onDispose {
             // Don't disconnect here as we want to maintain the connection
@@ -85,59 +91,82 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
             
             UserTypeIndicator(userType)
             
-                           LazyColumn(
-                   state = listState,
-                   modifier = Modifier
-                       .fillMaxWidth()
-                       .weight(1f)
-                       .padding(top = 16.dp, bottom = 8.dp),
-                   reverseLayout = true
-               ) {
-                   items(messages.reversed()) { message ->
-                       val multiPhoneMessage = MultiPhoneChatMessage(
-                           id = message.id,
-                           text = message.text,
-                           isIncoming = message.isIncoming,
-                           timestamp = dateFormat.format(Date(message.timestamp)),
-                           avatar = message.senderAvatar,
-                           senderName = message.senderName,
-                           showVideoCard = messagesWithVideoCards.contains(message.id)
-                       )
-                       
-                       MultiPhoneChatMessage(
-                           message = multiPhoneMessage,
-                           onMessageClick = { clickedMessage ->
-                               val wasVideoCardVisible = messagesWithVideoCards.contains(clickedMessage.id)
-                               messagesWithVideoCards = if (wasVideoCardVisible) {
-                                   messagesWithVideoCards - clickedMessage.id
-                               } else {
-                                   setOf(clickedMessage.id)
-                               }
-                               
-                               // Auto-scroll to keep the clicked message visible when video card appears
-                               if (!wasVideoCardVisible) {
-                                   val messageIndex = messages.indexOfFirst { it.id == clickedMessage.id }
-                                   if (messageIndex != -1) {
-                                       val reversedIndex = messages.size - 1 - messageIndex
-                                       coroutineScope.launch {
-                                           listState.animateScrollToItem(reversedIndex)
-                                       }
-                                   }
-                               }
-                           }
-                       )
-                   }
-               }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(top = 16.dp, bottom = 8.dp),
+                reverseLayout = true
+            ) {
+                items(messages.reversed()) { message ->
+                    val multiPhoneMessage = MultiPhoneChatMessage(
+                        id = message.id,
+                        text = message.text,
+                        isIncoming = message.isIncoming,
+                        timestamp = dateFormat.format(Date(message.timestamp)),
+                        avatar = message.senderAvatar,
+                        senderName = message.senderName,
+                        showVideoCard = messagesWithVideoCards.contains(message.id)
+                    )
+                    
+                    MultiPhoneChatMessage(
+                        message = multiPhoneMessage,
+                        onMessageClick = { clickedMessage ->
+                            val wasVideoCardVisible = messagesWithVideoCards.contains(clickedMessage.id)
+                            messagesWithVideoCards = if (wasVideoCardVisible) {
+                                messagesWithVideoCards - clickedMessage.id
+                            } else {
+                                setOf(clickedMessage.id)
+                            }
+                            
+                            // Auto-scroll to keep the clicked message visible when video card appears
+                            if (!wasVideoCardVisible) {
+                                val messageIndex = messages.indexOfFirst { it.id == clickedMessage.id }
+                                if (messageIndex != -1) {
+                                    val reversedIndex = messages.size - 1 - messageIndex
+                                    coroutineScope.launch {
+                                        listState.animateScrollToItem(reversedIndex)
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+            }
             
             DeafActionButtons(
                 onVocabularyClick = {
-                    navController.navigate(Screen.Vocabulary.route)
-                },
-                onWrongSignClick = {
-                    // TODO: Handle wrong sign functionality
+                    showVocabularyModal = true
                 },
                 onSignLanguageRecognitionClick = {
                     navController.navigate(Screen.SignLanguageRecognition.route)
+                }
+            )
+        }
+        
+        // Vocabulary Modal
+        if (showVocabularyModal) {
+            VocabularyModal(
+                onDismiss = { showVocabularyModal = false },
+                onCategoryClick = { categoryKey ->
+                    // Handle category selection - you can navigate to specific category or send a message
+                    if (categoryKey == "numbers") {
+                        navController.navigate(Screen.Numbers.route)
+                    } else {
+                        navController.navigate(Screen.Category.createRoute(categoryKey))
+                    }
+                },
+                onWrongSignClick = {
+                    // TODO: Handle wrong sign functionality
+                    println("Wrong sign clicked")
+                },
+                onSendMessage = { message ->
+                    nearbyService.sendMessage(message)
+                },
+                predictionMessage = predictionMessage,
+                onPredictionMessageChange = { message ->
+                    predictionMessage = message
                 }
             )
         }
