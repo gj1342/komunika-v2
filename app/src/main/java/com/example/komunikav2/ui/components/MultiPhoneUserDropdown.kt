@@ -23,7 +23,8 @@ import com.example.komunikav2.data.UserProfile
 fun MultiPhoneUserDropdown(
     key: Int = 0,
     connectedUsers: List<UserProfile> = emptyList(),
-    onUserClick: (UserProfile) -> Unit = {}
+    selectedUser: UserProfile? = null,
+    onUserClick: (UserProfile?) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     
@@ -37,7 +38,7 @@ fun MultiPhoneUserDropdown(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Users",
+                text = selectedUser?.name ?: if (connectedUsers.isNotEmpty()) "Select User" else "No Users",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White
@@ -89,7 +90,27 @@ fun MultiPhoneUserDropdown(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
             
+            // Option to deselect current user
+            if (selectedUser != null) {
+                DropdownMenuItem(
+                    text = { 
+                        Text(
+                            text = "Deselect User",
+                            fontSize = 14.sp,
+                            color = Color.Red
+                        )
+                    },
+                    onClick = {
+                        onUserClick(null)
+                        expanded = false
+                    }
+                )
+                
+                Divider(color = Color.LightGray, thickness = 1.dp)
+            }
+            
             connectedUsers.forEach { user ->
+                val isSelected = selectedUser?.id == user.id
                 DropdownMenuItem(
                     text = {
                         Row(
@@ -103,8 +124,17 @@ fun MultiPhoneUserDropdown(
                             Text(
                                 text = user.name,
                                 fontSize = 14.sp,
-                                color = Color.Black
+                                color = if (isSelected) Color.Blue else Color.Black,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
+                            if (isSelected) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    text = "✓",
+                                    fontSize = 16.sp,
+                                    color = Color.Blue
+                                )
+                            }
                         }
                     },
                     onClick = {
@@ -113,15 +143,6 @@ fun MultiPhoneUserDropdown(
                     }
                 )
             }
-            
-            Divider(color = Color.LightGray, thickness = 1.dp)
-            
-            DropdownMenuItem(
-                text = { Text("Settings") },
-                onClick = {
-                    expanded = false
-                }
-            )
         }
     }
 } 

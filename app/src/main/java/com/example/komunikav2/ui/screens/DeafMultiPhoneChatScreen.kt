@@ -50,6 +50,19 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
     // Track prediction message
     var predictionMessage by remember { mutableStateOf("") }
     
+    // Track currently selected category for visual indication
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    
+    // Listen for incoming predictions from hearing users
+    val incomingPredictions by nearbyService.incomingPredictions.collectAsState()
+    
+    // Update prediction message when incoming predictions arrive
+    LaunchedEffect(incomingPredictions) {
+        incomingPredictions?.let { prediction ->
+            predictionMessage = prediction.prediction
+        }
+    }
+    
     DisposableEffect(Unit) {
         onDispose {
             // Don't disconnect here as we want to maintain the connection
@@ -83,7 +96,7 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
                         connectedUsers = connectedUsers,
                         onUserClick = { user ->
                             // TODO: Handle user selection
-                            println("Selected user: ${user.name}")
+                            println("Selected user: ${user?.name}")
                         }
                     )
                 }
@@ -150,24 +163,38 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
             VocabularyModal(
                 onDismiss = { showVocabularyModal = false },
                 onCategoryClick = { categoryKey ->
-                    // Handle category selection - you can navigate to specific category or send a message
-                    if (categoryKey == "numbers") {
-                        navController.navigate(Screen.Numbers.route)
-                    } else {
-                        navController.navigate(Screen.Category.createRoute(categoryKey))
-                    }
+                    // Send category change to hearing users for camera prediction
+                    nearbyService.sendCategoryChange(categoryKey)
+                    // Update selected category for visual indication
+                    selectedCategory = categoryKey
+                    // Note: Modal stays open, no navigation - just model loading
+                    android.util.Log.d("DeafMultiPhoneChatScreen", "Category clicked: $categoryKey, sending to hearing users")
                 },
                 onWrongSignClick = {
-                    // TODO: Handle wrong sign functionality
-                    println("Wrong sign clicked")
+                    // Remove the last word from the current prediction message
+                    val words = predictionMessage.trim().split("\\s+".toRegex())
+                    predictionMessage = if (words.size > 1) {
+                        words.dropLast(1).joinToString(" ")
+                    } else {
+                        "" // If only one word, clear it
+                    }
+                    // Send wrong sign signal to hearing users to remove their last prediction
+                    nearbyService.sendWrongSignSignal()
+                    android.util.Log.d("DeafMultiPhoneChatScreen", "Delete clicked - removed last word and sent signal")
                 },
                 onSendMessage = { message ->
                     nearbyService.sendMessage(message)
+                    // Send signal to hearing users to clear their prediction display
+                    nearbyService.sendPredictionSentSignal()
+                    // Clear the prediction text in the vocabulary modal
+                    predictionMessage = ""
+                    android.util.Log.d("DeafMultiPhoneChatScreen", "Prediction sent to chat - cleared modal and signaling hearing users")
                 },
                 predictionMessage = predictionMessage,
                 onPredictionMessageChange = { message ->
                     predictionMessage = message
-                }
+                },
+                selectedCategory = selectedCategory
             )
         }
     }

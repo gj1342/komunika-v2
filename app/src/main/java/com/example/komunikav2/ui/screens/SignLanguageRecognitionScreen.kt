@@ -127,7 +127,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                         connectedUsers = connectedUsers,
                         onUserClick = { user ->
                             // TODO: Handle user selection
-                            println("Selected user: ${user.name}")
+                            println("Selected user: ${user?.name}")
                         }
                     )
                 }
@@ -171,13 +171,15 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                                     "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
                                     "people", "places", "questions", "time"
                                 )
+                                val isSelected = selectedCategory == category.categoryKey
+                                
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = if (isModelAvailable) {
-                                        colorResource(id = category.colorResId)
-                                    } else {
-                                        Color.Gray.copy(alpha = 0.5f)
+                                    backgroundColor = when {
+                                        isSelected -> Color.Blue // Selected state - blue background
+                                        isModelAvailable -> colorResource(id = category.colorResId) // Available
+                                        else -> Color.Gray.copy(alpha = 0.5f) // Unavailable
                                     },
                                     onClick = { 
                                         selectedCategory = category.categoryKey

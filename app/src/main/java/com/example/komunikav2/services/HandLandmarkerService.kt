@@ -98,8 +98,42 @@ class HandLandmarkerService(
     fun clearPrediction() {
         predictionHistory.clear()
         sentenceBuilder.clear()
+        landmarkBuffer.clear()
+        isPredicting = false
         _prediction.value = ""
-        Log.d("HandLandmarkerService", "Prediction cleared")
+        Log.d("HandLandmarkerService", "Prediction cleared - history, sentence, buffer and state reset")
+    }
+    
+    fun removeLastPrediction() {
+        if (predictionHistory.isNotEmpty()) {
+            val removedPrediction = predictionHistory.removeLastOrNull()
+            
+            // Rebuild sentence without the last prediction
+            sentenceBuilder.clear()
+            if (predictionHistory.isNotEmpty()) {
+                sentenceBuilder.append(predictionHistory.joinToString(" "))
+            }
+            
+            val currentSentence = sentenceBuilder.toString().trim()
+            
+            // Force update the StateFlow even if empty
+            _prediction.value = currentSentence
+            
+            Log.d("HandLandmarkerService", "Removed last prediction: '$removedPrediction'")
+            Log.d("HandLandmarkerService", "Updated sentence: '$currentSentence'")
+            Log.d("HandLandmarkerService", "Prediction StateFlow updated to: '${_prediction.value}'")
+        } else {
+            Log.d("HandLandmarkerService", "No predictions to remove")
+            // Ensure StateFlow is empty
+            _prediction.value = ""
+        }
+        
+        // Clear buffer and reset state to prevent continuing with old data
+        landmarkBuffer.clear()
+        isPredicting = false
+        
+        // Reset prediction timing to allow immediate new predictions
+        lastPredictionTime = 0L
     }
     
     fun getCurrentSentence(): String {
@@ -454,13 +488,13 @@ class HandLandmarkerService(
             }
             
             try {
-                val mpImage = BitmapImageBuilder(rotatedBitmap).build()
+            val mpImage = BitmapImageBuilder(rotatedBitmap).build()
                 detectAsync(mpImage, currentTime)
             } finally {
                 // Clean up bitmap after creating MPImage
                 rotatedBitmap.recycle()
             }
-            
+
         } catch (e: Exception) {
             Log.e("HandLandmarkerService", "Error in detectLiveStream", e)
         } finally {

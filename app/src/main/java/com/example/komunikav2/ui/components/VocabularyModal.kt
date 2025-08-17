@@ -27,7 +27,8 @@ fun VocabularyModal(
     onWrongSignClick: () -> Unit,
     onSendMessage: (String) -> Unit,
     predictionMessage: String = "",
-    onPredictionMessageChange: (String) -> Unit = {}
+    onPredictionMessageChange: (String) -> Unit = {},
+    selectedCategory: String? = null
 ) {
     
     val vocabularyCategories = listOf(
@@ -39,7 +40,9 @@ fun VocabularyModal(
         VocabularyCategory(R.drawable.calendar, R.string.calendar, R.color.button_purple, "calendar"),
         VocabularyCategory(R.drawable.time, R.string.time, R.color.button_light_blue, "time"),
         VocabularyCategory(R.drawable.money_matters, R.string.money_matters, R.color.button_green, "money_matters"),
-        VocabularyCategory(R.drawable.numbers, R.string.numbers, R.color.button_teal, "numbers"),
+        VocabularyCategory(R.drawable.numbers, R.string.numbers_1_10, R.color.button_teal, "numbers1-10"),
+        VocabularyCategory(R.drawable.numbers, R.string.numbers_11_19, R.color.button_teal, "numbers11-19"),
+        VocabularyCategory(R.drawable.numbers, R.string.numbers_20_100, R.color.button_teal, "numbers20-100"),
         VocabularyCategory(R.drawable.people, R.string.people, R.color.button_brown_orange, "people"),
         VocabularyCategory(R.drawable.place, R.string.place, R.color.button_pink_purple, "places"),
         VocabularyCategory(R.drawable.family, R.string.family, R.color.button_peach_orange, "family"),
@@ -129,12 +132,15 @@ fun VocabularyModal(
                         ) {
                             Button(
                                 onClick = { onWrongSignClick() },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(0.4f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFFFF5722)
                                 )
                             ) {
-                                Text("Wrong Sign")
+                                Text(
+                                    text = "Delete",
+                                    fontSize = 14.sp
+                                )
                             }
                             
                             Button(
@@ -144,13 +150,16 @@ fun VocabularyModal(
                                         onDismiss()
                                     }
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(0.6f),
                                 enabled = predictionMessage.isNotEmpty(),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF4CAF50)
                                 )
                             ) {
-                                Text("Send")
+                                Text(
+                                    text = "Send",
+                                    fontSize = 14.sp
+                                )
                             }
                         }
                     }
@@ -169,13 +178,13 @@ fun VocabularyModal(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             vocabularyCategories.take(4).forEach { category ->
+                                val isSelected = selectedCategory == category.categoryKey
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = colorResource(id = category.colorResId),
+                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
                                     onClick = { 
                                         onCategoryClick(category.categoryKey)
-                                        onDismiss()
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
@@ -189,13 +198,13 @@ fun VocabularyModal(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             vocabularyCategories.drop(4).take(4).forEach { category ->
+                                val isSelected = selectedCategory == category.categoryKey
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = colorResource(id = category.colorResId),
+                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
                                     onClick = { 
                                         onCategoryClick(category.categoryKey)
-                                        onDismiss()
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
@@ -209,13 +218,13 @@ fun VocabularyModal(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             vocabularyCategories.drop(8).take(4).forEach { category ->
+                                val isSelected = selectedCategory == category.categoryKey
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = colorResource(id = category.colorResId),
+                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
                                     onClick = { 
                                         onCategoryClick(category.categoryKey)
-                                        onDismiss()
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
@@ -229,13 +238,13 @@ fun VocabularyModal(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             vocabularyCategories.drop(12).take(4).forEach { category ->
+                                val isSelected = selectedCategory == category.categoryKey
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = colorResource(id = category.colorResId),
+                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
                                     onClick = { 
                                         onCategoryClick(category.categoryKey)
-                                        onDismiss()
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
@@ -249,13 +258,13 @@ fun VocabularyModal(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             vocabularyCategories.drop(16).take(2).forEach { category ->
+                                val isSelected = selectedCategory == category.categoryKey
                                 VocabularyCategoryButton(
                                     iconResId = category.iconResId,
                                     text = stringResource(id = category.textResId),
-                                    backgroundColor = colorResource(id = category.colorResId),
+                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
                                     onClick = { 
                                         onCategoryClick(category.categoryKey)
-                                        onDismiss()
                                     },
                                     modifier = Modifier.weight(1f)
                                 )

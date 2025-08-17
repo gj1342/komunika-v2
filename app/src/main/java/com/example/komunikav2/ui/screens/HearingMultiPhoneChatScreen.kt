@@ -42,6 +42,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
     var currentMessage by remember { mutableStateOf("") }
     var showCameraPopup by remember { mutableStateOf(false) }
     var predictionMessage by remember { mutableStateOf("") }
+    var selectedUserForPrediction by remember { mutableStateOf<com.example.komunikav2.data.UserProfile?>(null) }
     
     val userType = userDataManager.getUserType()
     val listState = rememberLazyListState()
@@ -86,9 +87,10 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                     MultiPhoneUserDropdown(
                         key = connectedUsers.size, // Force recomposition when user count changes
                         connectedUsers = connectedUsers,
+                        selectedUser = selectedUserForPrediction,
                         onUserClick = { user ->
-                            // TODO: Handle user selection
-                            println("Selected user: ${user.name}")
+                            // Header dropdown controls prediction target
+                            selectedUserForPrediction = user
                         }
                     )
                 }
@@ -99,11 +101,14 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
             // Camera Popup
             if (showCameraPopup) {
                 HearingCameraPopup(
-                    onClose = { showCameraPopup = false },
+                    onClose = { 
+                        showCameraPopup = false
+                    },
                     predictionMessage = predictionMessage,
                     onPredictionChange = { message ->
                         predictionMessage = message
-                    }
+                    },
+                    selectedUser = selectedUserForPrediction
                 )
             }
             

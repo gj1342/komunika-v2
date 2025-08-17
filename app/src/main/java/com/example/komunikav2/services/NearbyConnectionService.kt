@@ -6,6 +6,7 @@ import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.*
 import com.example.komunikav2.data.UserProfile
 import com.example.komunikav2.data.ChatMessage
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,10 +14,41 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.*
 
+@Serializable
+data class PredictionMessage(
+    val type: String,
+    val targetUserId: String,
+    val prediction: String,
+    val category: String? = null,
+    val isModelCategoryChange: Boolean = false
+)
+
+@Serializable
+data class CategoryChangeMessage(
+    val type: String,
+    val fromUserId: String,
+    val category: String
+)
+
+@Serializable
+data class WrongSignMessage(
+    val type: String,
+    val fromUserId: String
+)
+
+@Serializable
+data class PredictionSentMessage(
+    val type: String,
+    val fromUserId: String
+)
+
 class NearbyConnectionService private constructor(private val context: Context) {
     
     private val connectionsClient = Nearby.getConnectionsClient(context)
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { 
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
     
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -29,6 +61,18 @@ class NearbyConnectionService private constructor(private val context: Context) 
     
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+    
+    private val _incomingPredictions = MutableStateFlow<PredictionMessage?>(null)
+    val incomingPredictions: StateFlow<PredictionMessage?> = _incomingPredictions.asStateFlow()
+    
+    private val _categoryChanges = MutableStateFlow<CategoryChangeMessage?>(null)
+    val categoryChanges: StateFlow<CategoryChangeMessage?> = _categoryChanges.asStateFlow()
+    
+    private val _wrongSignSignals = MutableStateFlow<WrongSignMessage?>(null)
+    val wrongSignSignals: StateFlow<WrongSignMessage?> = _wrongSignSignals.asStateFlow()
+    
+    private val _predictionSentSignals = MutableStateFlow<PredictionSentMessage?>(null)
+    val predictionSentSignals: StateFlow<PredictionSentMessage?> = _predictionSentSignals.asStateFlow()
     
     private var currentUserProfile: UserProfile? = null
     private var currentServiceId: String? = null
@@ -314,6 +358,149 @@ class NearbyConnectionService private constructor(private val context: Context) 
         Log.d(TAG, "Message added to local list")
     }
     
+    fun sendPredictionToUser(targetUserId: String, prediction: String, category: String? = null) {
+        if (connectedEndpointIds.isEmpty()) {
+            Log.w(TAG, "No connected endpoints to send prediction to")
+            return
+        }
+        
+        val predictionMessage = PredictionMessage(
+            type = "prediction",
+            targetUserId = targetUserId,
+            prediction = prediction,
+            category = category
+        )
+        
+        val messageJson = json.encodeToString(predictionMessage)
+        val payload = Payload.fromBytes(messageJson.toByteArray())
+        
+        Log.d(TAG, "Sending prediction to target user $targetUserId: $prediction")
+        
+        // Send to all connected endpoints (the target user will filter)
+        for (endpointId in connectedEndpointIds) {
+            connectionsClient.sendPayload(endpointId, payload)
+                .addOnSuccessListener {
+                    Log.d(TAG, "Prediction sent successfully to $endpointId")
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Failed to send prediction to $endpointId", exception)
+                }
+        }
+    }
+    
+    fun sendCategoryChange(category: String) {
+        Log.d(TAG, "sendCategoryChange called with category: $category")
+        Log.d(TAG, "Connected endpoints: ${connectedEndpointIds.size}")
+        Log.d(TAG, "Current user profile: ${currentUserProfile?.name}")
+        
+        if (connectedEndpointIds.isEmpty()) {
+            Log.w(TAG, "No connected endpoints to send category change to")
+            return
+        }
+        
+        if (currentUserProfile == null) {
+            Log.e(TAG, "Cannot send category change: currentUserProfile is null")
+            return
+        }
+        
+        val categoryMessage = CategoryChangeMessage(
+            type = "category_change",
+            fromUserId = currentUserProfile?.id ?: "",
+            category = category
+        )
+        
+        val messageJson = json.encodeToString(categoryMessage)
+        val payload = Payload.fromBytes(messageJson.toByteArray())
+        
+        Log.d(TAG, "Sending category change: $category from user: ${currentUserProfile?.name}")
+        Log.d(TAG, "Category message object: $categoryMessage")
+        Log.d(TAG, "Category message JSON: $messageJson")
+        
+        // Send to all connected endpoints
+        for (endpointId in connectedEndpointIds) {
+            connectionsClient.sendPayload(endpointId, payload)
+                .addOnSuccessListener {
+                    Log.d(TAG, "Category change sent successfully to $endpointId")
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Failed to send category change to $endpointId", exception)
+                }
+        }
+    }
+    
+    fun sendWrongSignSignal() {
+        Log.d(TAG, "sendWrongSignSignal called")
+        Log.d(TAG, "Connected endpoints: ${connectedEndpointIds.size}")
+        Log.d(TAG, "Current user profile: ${currentUserProfile?.name}")
+        
+        if (connectedEndpointIds.isEmpty()) {
+            Log.w(TAG, "No connected endpoints to send wrong sign signal to")
+            return
+        }
+        
+        if (currentUserProfile == null) {
+            Log.e(TAG, "Cannot send wrong sign signal: currentUserProfile is null")
+            return
+        }
+        
+        val wrongSignMessage = WrongSignMessage(
+            type = "wrong_sign",
+            fromUserId = currentUserProfile?.id ?: ""
+        )
+        
+        val messageJson = json.encodeToString(wrongSignMessage)
+        val payload = Payload.fromBytes(messageJson.toByteArray())
+        
+        Log.d(TAG, "Sending wrong sign signal from user: ${currentUserProfile?.name}")
+        Log.d(TAG, "Wrong sign message JSON: $messageJson")
+        
+        // Send to all connected endpoints
+        for (endpointId in connectedEndpointIds) {
+            connectionsClient.sendPayload(endpointId, payload)
+                .addOnSuccessListener {
+                    Log.d(TAG, "Wrong sign signal sent successfully to $endpointId")
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Failed to send wrong sign signal to $endpointId", exception)
+                }
+        }
+    }
+    
+    fun sendPredictionSentSignal() {
+        Log.d(TAG, "sendPredictionSentSignal called")
+        
+        if (connectedEndpointIds.isEmpty()) {
+            Log.w(TAG, "No connected endpoints to send prediction sent signal to")
+            return
+        }
+        
+        if (currentUserProfile == null) {
+            Log.e(TAG, "Cannot send prediction sent signal: currentUserProfile is null")
+            return
+        }
+        
+        val predictionSentMessage = PredictionSentMessage(
+            type = "prediction_sent",
+            fromUserId = currentUserProfile?.id ?: ""
+        )
+        
+        val messageJson = json.encodeToString(predictionSentMessage)
+        val payload = Payload.fromBytes(messageJson.toByteArray())
+        
+        Log.d(TAG, "Sending prediction sent signal from user: ${currentUserProfile?.name}")
+        
+        // Send to all connected endpoints
+        for (endpointId in connectedEndpointIds) {
+            connectionsClient.sendPayload(endpointId, payload)
+                .addOnSuccessListener {
+                    Log.d(TAG, "Prediction sent signal sent successfully to $endpointId")
+                }
+                .addOnFailureListener { exception ->
+                    Log.e(TAG, "Failed to send prediction sent signal to $endpointId", exception)
+                }
+        }
+    }
+    
     private fun sendUserProfile(endpointId: String) {
         currentUserProfile?.let { profile ->
             val profileJson = json.encodeToString(profile)
@@ -357,6 +544,29 @@ class NearbyConnectionService private constructor(private val context: Context) 
                 val message = json.decodeFromString<ChatMessage>(data)
                 Log.d(TAG, "Received message: ${message.text}")
                 addMessage(message.copy(isIncoming = true))
+            } else if (data.contains("\"type\":\"prediction\"")) {
+                val predictionMessage = json.decodeFromString<PredictionMessage>(data)
+                Log.d(TAG, "Received prediction message for user: ${predictionMessage.targetUserId}")
+                
+                // Only process if this prediction is for the current user
+                if (predictionMessage.targetUserId == currentUserProfile?.id) {
+                    _incomingPredictions.value = predictionMessage
+                    Log.d(TAG, "Prediction message accepted: ${predictionMessage.prediction}")
+                } else {
+                    Log.d(TAG, "Prediction message ignored - not for this user")
+                }
+            } else if (data.contains("\"type\":\"category_change\"")) {
+                val categoryMessage = json.decodeFromString<CategoryChangeMessage>(data)
+                Log.d(TAG, "Received category change from user: ${categoryMessage.fromUserId}, category: ${categoryMessage.category}")
+                _categoryChanges.value = categoryMessage
+            } else if (data.contains("\"type\":\"wrong_sign\"")) {
+                val wrongSignMessage = json.decodeFromString<WrongSignMessage>(data)
+                Log.d(TAG, "Received wrong sign signal from user: ${wrongSignMessage.fromUserId}")
+                _wrongSignSignals.value = wrongSignMessage
+            } else if (data.contains("\"type\":\"prediction_sent\"")) {
+                val predictionSentMessage = json.decodeFromString<PredictionSentMessage>(data)
+                Log.d(TAG, "Received prediction sent signal from user: ${predictionSentMessage.fromUserId}")
+                _predictionSentSignals.value = predictionSentMessage
             } else {
                 Log.w(TAG, "Unknown data format received: $data")
             }
