@@ -39,6 +39,7 @@ fun HearingCameraPopup(
     val categoryChanges by nearbyService.categoryChanges.collectAsState()
     val wrongSignSignals by nearbyService.wrongSignSignals.collectAsState()
     val predictionSentSignals by nearbyService.predictionSentSignals.collectAsState()
+    val predictionPauseSignals by nearbyService.predictionPauseSignals.collectAsState()
     
     // Set up the listener for predictions (like SignLanguageRecognitionScreen)
     LaunchedEffect(handLandmarkerService) {
@@ -89,7 +90,7 @@ fun HearingCameraPopup(
     }
     
     // Handle wrong sign signals from selected user
-    LaunchedEffect(wrongSignSignals, selectedUser) {
+    LaunchedEffect(wrongSignSignals?.eventId, selectedUser) {
         wrongSignSignals?.let { signal ->
             if (selectedUser != null && signal.fromUserId == selectedUser.id) {
                 android.util.Log.d("HearingCameraPopup", "Delete signal received from ${selectedUser.name} - removing last prediction")
@@ -99,17 +100,22 @@ fun HearingCameraPopup(
                 
                 // Remove only the last prediction, keep the rest of the sentence
                 handLandmarkerService.removeLastPrediction()
-                
-                // Show the updated sentence after deletion, or status if empty
                 val updatedSentence = handLandmarkerService.getCurrentSentence()
-                if (updatedSentence.isNotBlank()) {
-                    onPredictionChange(updatedSentence)
-                } else {
-                    onPredictionChange("Last word deleted. Ready for new gesture...")
-                }
                 
-                // Reset delete flag after a shorter delay since we're showing the sentence
-                kotlinx.coroutines.delay(1000)
+                // Also trim the currently displayed text to immediately reflect deletion
+                val displayText = predictionMessage.trim()
+                val words = if (displayText.isNotEmpty()) displayText.split("\\s+".toRegex()) else emptyList()
+                val updatedDisplay = if (words.size > 1) words.dropLast(1).joinToString(" ") else ""
+                
+                val finalText = when {
+                    updatedDisplay.isNotBlank() -> updatedDisplay
+                    updatedSentence.isNotBlank() -> updatedSentence
+                    else -> "Last word deleted. Ready for new gesture..."
+                }
+                onPredictionChange(finalText)
+                
+                // Keep UI guarded while the service suppression window is active
+                kotlinx.coroutines.delay(2000)
                 isDeleteInProgress = false
             }
         }
@@ -128,11 +134,34 @@ fun HearingCameraPopup(
         }
     }
     
-    // Only update prediction when user is selected and not during delete operation
-    LaunchedEffect(isHandDetected, selectedUser, prediction, isDeleteInProgress) {
+    var isPaused by remember { mutableStateOf(false) }
+
+    // Handle pause/resume from deaf user
+    LaunchedEffect(predictionPauseSignals?.eventId, selectedUser) {
+        predictionPauseSignals?.let { pause ->
+            if (selectedUser != null && pause.fromUserId == selectedUser.id) {
+                isPaused = pause.paused
+                if (pause.paused) {
+                    android.util.Log.d("HearingCameraPopup", "Pausing detection on request from ${selectedUser.name}")
+                    handLandmarkerService.clearPrediction()
+                    onPredictionChange("Prediction paused by user.")
+                } else {
+                    android.util.Log.d("HearingCameraPopup", "Resuming detection on request from ${selectedUser.name}")
+                    onPredictionChange("")
+                }
+            }
+        }
+    }
+
+    // Only update prediction when user is selected and not during delete operation and not paused
+    LaunchedEffect(isHandDetected, selectedUser, prediction, isDeleteInProgress, isPaused) {
         // Don't update UI during delete operation to prevent race conditions
         if (isDeleteInProgress) {
             android.util.Log.d("HearingCameraPopup", "Skipping prediction update - delete in progress")
+            return@LaunchedEffect
+        }
+        if (isPaused) {
+            onPredictionChange("Prediction paused by user.")
             return@LaunchedEffect
         }
         

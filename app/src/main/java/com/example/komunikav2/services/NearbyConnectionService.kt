@@ -33,13 +33,22 @@ data class CategoryChangeMessage(
 @Serializable
 data class WrongSignMessage(
     val type: String,
-    val fromUserId: String
+    val fromUserId: String,
+    val eventId: String = java.util.UUID.randomUUID().toString()
 )
 
 @Serializable
 data class PredictionSentMessage(
     val type: String,
     val fromUserId: String
+)
+
+@Serializable
+data class PredictionPauseMessage(
+    val type: String,
+    val fromUserId: String,
+    val paused: Boolean,
+    val eventId: String = java.util.UUID.randomUUID().toString()
 )
 
 class NearbyConnectionService private constructor(private val context: Context) {
@@ -73,6 +82,8 @@ class NearbyConnectionService private constructor(private val context: Context) 
     
     private val _predictionSentSignals = MutableStateFlow<PredictionSentMessage?>(null)
     val predictionSentSignals: StateFlow<PredictionSentMessage?> = _predictionSentSignals.asStateFlow()
+    private val _predictionPauseSignals = MutableStateFlow<PredictionPauseMessage?>(null)
+    val predictionPauseSignals: StateFlow<PredictionPauseMessage?> = _predictionPauseSignals.asStateFlow()
     
     private var currentUserProfile: UserProfile? = null
     private var currentServiceId: String? = null
@@ -500,6 +511,30 @@ class NearbyConnectionService private constructor(private val context: Context) 
                 }
         }
     }
+
+    fun sendPredictionPause(paused: Boolean) {
+        Log.d(TAG, "sendPredictionPause called: paused=$paused")
+        if (connectedEndpointIds.isEmpty()) {
+            Log.w(TAG, "No connected endpoints to send prediction pause to")
+            return
+        }
+        if (currentUserProfile == null) {
+            Log.e(TAG, "Cannot send prediction pause: currentUserProfile is null")
+            return
+        }
+        val pauseMessage = PredictionPauseMessage(
+            type = "prediction_pause",
+            fromUserId = currentUserProfile?.id ?: "",
+            paused = paused
+        )
+        val messageJson = json.encodeToString(pauseMessage)
+        val payload = Payload.fromBytes(messageJson.toByteArray())
+        for (endpointId in connectedEndpointIds) {
+            connectionsClient.sendPayload(endpointId, payload)
+                .addOnSuccessListener { Log.d(TAG, "Prediction pause sent to $endpointId") }
+                .addOnFailureListener { e -> Log.e(TAG, "Failed to send prediction pause to $endpointId", e) }
+        }
+    }
     
     private fun sendUserProfile(endpointId: String) {
         currentUserProfile?.let { profile ->
@@ -567,6 +602,10 @@ class NearbyConnectionService private constructor(private val context: Context) 
                 val predictionSentMessage = json.decodeFromString<PredictionSentMessage>(data)
                 Log.d(TAG, "Received prediction sent signal from user: ${predictionSentMessage.fromUserId}")
                 _predictionSentSignals.value = predictionSentMessage
+            } else if (data.contains("\"type\":\"prediction_pause\"")) {
+                val pauseMessage = json.decodeFromString<PredictionPauseMessage>(data)
+                Log.d(TAG, "Received prediction pause from user: ${pauseMessage.fromUserId}, paused=${pauseMessage.paused}")
+                _predictionPauseSignals.value = pauseMessage
             } else {
                 Log.w(TAG, "Unknown data format received: $data")
             }

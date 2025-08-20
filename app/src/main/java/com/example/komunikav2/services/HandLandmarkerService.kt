@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import java.io.ByteArrayOutputStream
 import android.util.Log
 
@@ -56,6 +58,11 @@ class HandLandmarkerService(
     private var isPredicting = false
     private var lastPredictionTime = 0L
     private val minPredictionInterval = 2000L // 2 seconds between predictions
+    private var predictionLockUntilMs: Long = 0L
+    @Volatile private var suppressNextPrediction: Boolean = false
+    private var predictionJob: Job? = null
+    private var blockedPrediction: String? = null
+    private var blockPredictionUntilMs: Long = 0L
     
     // Sentence building components
     private val predictionHistory = mutableListOf<String>()
@@ -105,6 +112,13 @@ class HandLandmarkerService(
     }
     
     fun removeLastPrediction() {
+        // Cancel any in-flight prediction immediately
+        try {
+            predictionJob?.cancel()
+        } catch (_: Exception) {}
+        predictionJob = null
+        isPredicting = false
+
         if (predictionHistory.isNotEmpty()) {
             val removedPrediction = predictionHistory.removeLastOrNull()
             
@@ -134,6 +148,16 @@ class HandLandmarkerService(
         
         // Reset prediction timing to allow immediate new predictions
         lastPredictionTime = 0L
+
+        // Suppress the next prediction updates for a short window while new frames still stream
+        suppressNextPrediction = true
+        predictionLockUntilMs = SystemClock.uptimeMillis() + 2000L
+
+        // Prevent the same word from being immediately re-added while the hand hasn't changed
+        val lastRemoved = sentenceBuilder.toString().split(" ").lastOrNull { it.isNotBlank() }
+        blockedPrediction = lastRemoved
+        blockPredictionUntilMs = SystemClock.uptimeMillis() + 3000L
+        Log.d("HandLandmarkerService", "Blocked prediction set to: '${blockedPrediction}' until ${blockPredictionUntilMs}")
     }
     
     fun getCurrentSentence(): String {
@@ -369,17 +393,38 @@ class HandLandmarkerService(
         if (isPredicting) return
         
         isPredicting = true
-        CoroutineScope(Dispatchers.IO).launch {
+        predictionJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 Log.d("HandLandmarkerService", "Making prediction with ${landmarkBuffer.size} frames")
                 val result = signLanguagePredictor?.predict(landmarkBuffer.toList())
                 Log.d("HandLandmarkerService", "Prediction result: $result")
                 
+                if (suppressNextPrediction) {
+                    Log.d("HandLandmarkerService", "Suppressing prediction output due to recent delete action")
+                    suppressNextPrediction = false
+                    _prediction.value = sentenceBuilder.toString().trim()
+                    return@launch
+                }
+
+                val now = SystemClock.uptimeMillis()
+                if (now < predictionLockUntilMs) {
+                    Log.d("HandLandmarkerService", "Prediction lock active, skipping UI update")
+                    _prediction.value = sentenceBuilder.toString().trim()
+                    return@launch
+                }
+
                 if (result != null) {
                     val predictionText = result.prediction
                     val confidence = result.confidence
                     
                     Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%)")
+
+                    val now2 = SystemClock.uptimeMillis()
+                    if (blockedPrediction != null && now2 < blockPredictionUntilMs && predictionText.equals(blockedPrediction, ignoreCase = true)) {
+                        Log.d("HandLandmarkerService", "Prediction '${predictionText}' blocked temporarily after delete")
+                        _prediction.value = sentenceBuilder.toString().trim()
+                        return@launch
+                    }
                     
                     if (confidence >= PREDICTION_THRESHOLD) {
                         // High confidence - add to sentence
@@ -392,6 +437,11 @@ class HandLandmarkerService(
                         
                         Log.d("HandLandmarkerService", "High confidence - added to sentence: $predictionText")
                         Log.d("HandLandmarkerService", "Current sentence: $currentSentence")
+                        // Clear block if a different word was added
+                        if (!predictionText.equals(blockedPrediction, ignoreCase = true)) {
+                            blockedPrediction = null
+                            blockPredictionUntilMs = 0L
+                        }
                     } else {
                         // Low confidence - show but don't add to sentence
                         _prediction.value = predictionText
@@ -403,11 +453,14 @@ class HandLandmarkerService(
                     Log.d("HandLandmarkerService", "No prediction result")
                     handLandmarkerListener?.onPrediction("")
                 }
+            } catch (ce: CancellationException) {
+                Log.d("HandLandmarkerService", "Prediction job cancelled")
             } catch (e: Exception) {
                 Log.e("HandLandmarkerService", "Error during prediction", e)
                 handLandmarkerListener?.onError("Prediction error: ${e.message}", 1)
             } finally {
                 isPredicting = false
+                predictionJob = null
             }
         }
     }

@@ -161,10 +161,16 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
         // Vocabulary Modal
         if (showVocabularyModal) {
             VocabularyModal(
-                onDismiss = { showVocabularyModal = false },
+                onDismiss = { 
+                    // Pause prediction on hearing side when modal is closed
+                    nearbyService.sendPredictionPause(true)
+                    showVocabularyModal = false 
+                },
                 onCategoryClick = { categoryKey ->
                     // Send category change to hearing users for camera prediction
                     nearbyService.sendCategoryChange(categoryKey)
+                    // Resume prediction upon selecting a category
+                    nearbyService.sendPredictionPause(false)
                     // Update selected category for visual indication
                     selectedCategory = categoryKey
                     // Note: Modal stays open, no navigation - just model loading
