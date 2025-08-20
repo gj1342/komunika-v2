@@ -133,6 +133,9 @@ class SignLanguagePredictor(private val context: Context) {
             
             Log.d(TAG, "Model input shape: ${inputShape.contentToString()}, expected size: $expectedInputSize")
             Log.d(TAG, "Our data size: ${landmarks.size * (landmarks.firstOrNull()?.size ?: 0)}")
+            Log.d(TAG, "Landmarks frame count: ${landmarks.size}")
+            Log.d(TAG, "Landmarks per frame: ${landmarks.firstOrNull()?.size ?: 0}")
+            Log.d(TAG, "Total coordinates: ${landmarks.flatten().size}")
             
             val inputData = preprocessLandmarks(landmarks)
             
@@ -160,8 +163,11 @@ class SignLanguagePredictor(private val context: Context) {
             val prediction = currentLabels.getOrNull(maxIndex) ?: "Unknown"
             
             Log.d(TAG, "Raw predictions (first 5): ${predictions.take(5).joinToString()}")
+            Log.d(TAG, "All predictions: ${predictions.joinToString()}")
             Log.d(TAG, "Valid prediction count: $validPredictionCount")
+            Log.d(TAG, "Max confidence index: $maxIndex")
             Log.d(TAG, "Prediction: $prediction (confidence: $confidence)")
+            Log.d(TAG, "Available labels: ${currentLabels.joinToString()}")
             
             PredictionResult(
                 prediction = prediction,

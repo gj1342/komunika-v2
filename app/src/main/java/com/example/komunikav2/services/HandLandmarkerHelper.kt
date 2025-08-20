@@ -39,7 +39,7 @@ class HandLandmarkerHelper(
     companion object {
         private const val TAG = "HandLandmarkerHelper"
         private const val BUFFER_SIZE = 30
-        private const val PREDICTION_THRESHOLD = 0.7f
+        private const val PREDICTION_THRESHOLD = 0.3f
     }
     
     interface LandmarkerListener {
@@ -68,10 +68,10 @@ class HandLandmarkerHelper(
             
             val options = HandLandmarker.HandLandmarkerOptions.builder()
                 .setBaseOptions(baseOptions)
-                .setMinHandDetectionConfidence(0.5f)
-                .setMinTrackingConfidence(0.5f)
-                .setMinHandPresenceConfidence(0.5f)
-                .setNumHands(1)
+                .setMinHandDetectionConfidence(0.7f)
+                .setMinTrackingConfidence(0.7f)
+                .setMinHandPresenceConfidence(0.7f)
+                .setNumHands(2)
                 .setRunningMode(runningMode)
                 .setResultListener { result, image ->
                     val inferenceTime = SystemClock.uptimeMillis()

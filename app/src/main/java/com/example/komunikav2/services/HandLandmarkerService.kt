@@ -50,7 +50,7 @@ class HandLandmarkerService(
     val prediction: StateFlow<String> = _prediction.asStateFlow()
     
     private var lastProcessTime = 0L
-    private val minProcessInterval = 100L
+    private val minProcessInterval = 33L
     private var landmarkBuffer: MutableList<List<Float>> = mutableListOf()
     private var currentCategory: String? = null
     private var isPredicting = false
@@ -64,7 +64,7 @@ class HandLandmarkerService(
     
     companion object {
         private const val BUFFER_SIZE = 30
-        private const val PREDICTION_THRESHOLD = 0.7f
+        private const val PREDICTION_THRESHOLD = 0.3f
     }
     
     interface LandmarkerListener {
@@ -166,10 +166,10 @@ class HandLandmarkerService(
             
             val options = HandLandmarker.HandLandmarkerOptions.builder()
                 .setBaseOptions(baseOptions)
-                .setMinHandDetectionConfidence(0.5f)
-                .setMinTrackingConfidence(0.5f)
-                .setMinHandPresenceConfidence(0.5f)
-                .setNumHands(1)
+                .setMinHandDetectionConfidence(0.7f)
+                .setMinTrackingConfidence(0.7f)
+                .setMinHandPresenceConfidence(0.7f)
+                .setNumHands(2)
                 .setRunningMode(RunningMode.LIVE_STREAM)
                 .setResultListener { result, image ->
                     processHandLandmarkerResult(result, image)
@@ -200,7 +200,10 @@ class HandLandmarkerService(
         if (result.landmarks().isNotEmpty()) {
             calculateBoundingBox(result, image.width, image.height)
             Log.d("HandLandmarkerService", "Processing landmarks for prediction")
-            processLandmarksForPrediction(result.landmarks()[0])
+            
+            // Combine all detected hands into single landmark list
+            val allLandmarks = result.landmarks().flatMap { it }
+            processLandmarksForPrediction(allLandmarks)
         } else {
             _handBoundingBox.value = null
             Log.d("HandLandmarkerService", "No hands detected")
@@ -310,34 +313,55 @@ class HandLandmarkerService(
             return
         }
         
-        // Extract landmarks for first hand (63 coordinates: 21 landmarks × 3 coordinates)
-        val hand1Data = landmarks.flatMap { landmark ->
-            listOf(landmark.x(), landmark.y(), landmark.z())
-        }
-        
-        // Pad with zeros for second hand (63 more coordinates)
-        val hand2Data = List(63) { 0.0f }
-        
-        // Combine both hands to get 126 coordinates total
-        val landmarkData = hand1Data + hand2Data
+        // Process landmarks for proper two-hand format
+        val landmarkData = processLandmarksForTwoHands(landmarks)
         
         landmarkBuffer.add(landmarkData)
         Log.d("HandLandmarkerService", "Added landmark frame with ${landmarkData.size} coordinates. Buffer size: ${landmarkBuffer.size}/$BUFFER_SIZE")
         
-        if (landmarkBuffer.size > BUFFER_SIZE) {
-            landmarkBuffer.removeAt(0)
-        }
-        
+        // Only predict when buffer is exactly full
         if (landmarkBuffer.size == BUFFER_SIZE && !isPredicting) {
             val currentTime = SystemClock.uptimeMillis()
             if (currentTime - lastPredictionTime >= minPredictionInterval) {
                 Log.d("HandLandmarkerService", "Buffer full, triggering prediction")
                 lastPredictionTime = currentTime
                 makePrediction()
+                // Clear buffer after prediction for fresh start
+                landmarkBuffer.clear()
             } else {
                 val timeRemaining = minPredictionInterval - (currentTime - lastPredictionTime)
                 Log.d("HandLandmarkerService", "Prediction cooldown active, ${timeRemaining}ms remaining")
             }
+        }
+    }
+    
+    private fun processLandmarksForTwoHands(landmarks: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>): List<Float> {
+        // Check if we have enough landmarks for two hands (42 landmarks = 21 per hand)
+        val hasTwoHands = landmarks.size >= 42
+        
+        if (hasTwoHands) {
+            // Extract landmarks for both hands
+            val hand1Landmarks = landmarks.take(21)
+            val hand2Landmarks = landmarks.drop(21).take(21)
+            
+            val hand1Data = hand1Landmarks.flatMap { landmark ->
+                listOf(landmark.x(), landmark.y(), landmark.z())
+            }
+            val hand2Data = hand2Landmarks.flatMap { landmark ->
+                listOf(landmark.x(), landmark.y(), landmark.z())
+            }
+            
+            Log.d("HandLandmarkerService", "Processing two hands: ${hand1Landmarks.size} + ${hand2Landmarks.size} landmarks")
+            return hand1Data + hand2Data
+        } else {
+            // Single hand - pad with zeros for second hand
+            val hand1Data = landmarks.flatMap { landmark ->
+                listOf(landmark.x(), landmark.y(), landmark.z())
+            }
+            val hand2Data = List(63) { 0.0f }
+            
+            Log.d("HandLandmarkerService", "Processing single hand: ${landmarks.size} landmarks, padding second hand")
+            return hand1Data + hand2Data
         }
     }
     
@@ -351,29 +375,30 @@ class HandLandmarkerService(
                 val result = signLanguagePredictor?.predict(landmarkBuffer.toList())
                 Log.d("HandLandmarkerService", "Prediction result: $result")
                 
-                if (result != null && result.confidence >= PREDICTION_THRESHOLD) {
+                if (result != null) {
                     val predictionText = result.prediction
+                    val confidence = result.confidence
                     
-                    // Add to prediction history
-                    predictionHistory.add(predictionText)
+                    Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%)")
                     
-                    // Build sentence
-                    sentenceBuilder.append(" $predictionText ")
-                    val currentSentence = sentenceBuilder.toString().trim()
-                    
-                    // Update StateFlow for UI
-                    _prediction.value = currentSentence
-                    
-                    // Notify listener via callback
-                    handLandmarkerListener?.onPrediction(predictionText)
-                    
-                    Log.d("HandLandmarkerService", "High confidence prediction: $predictionText")
-                    Log.d("HandLandmarkerService", "Current sentence: $currentSentence")
-                } else if (result != null) {
-                    val predictionText = result.prediction
-                    _prediction.value = predictionText
-                    handLandmarkerListener?.onPrediction(predictionText)
-                    Log.d("HandLandmarkerService", "Low confidence prediction: $predictionText (${(result.confidence * 100).toInt()}%)")
+                    if (confidence >= PREDICTION_THRESHOLD) {
+                        // High confidence - add to sentence
+                        predictionHistory.add(predictionText)
+                        sentenceBuilder.append(" $predictionText ")
+                        val currentSentence = sentenceBuilder.toString().trim()
+                        
+                        _prediction.value = currentSentence
+                        handLandmarkerListener?.onPrediction(predictionText)
+                        
+                        Log.d("HandLandmarkerService", "High confidence - added to sentence: $predictionText")
+                        Log.d("HandLandmarkerService", "Current sentence: $currentSentence")
+                    } else {
+                        // Low confidence - show but don't add to sentence
+                        _prediction.value = predictionText
+                        handLandmarkerListener?.onPrediction(predictionText)
+                        
+                        Log.d("HandLandmarkerService", "Low confidence - showing but not adding: $predictionText")
+                    }
                 } else {
                     Log.d("HandLandmarkerService", "No prediction result")
                     handLandmarkerListener?.onPrediction("")
