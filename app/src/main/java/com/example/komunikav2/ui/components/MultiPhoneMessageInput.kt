@@ -29,7 +29,8 @@ fun MultiPhoneMessageInput(
     onMessageChange: (String) -> Unit,
     onSendClick: () -> Unit,
     onMicClick: () -> Unit,
-    onCameraClick: () -> Unit
+    onCameraClick: () -> Unit,
+    isMicActive: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -87,7 +88,7 @@ fun MultiPhoneMessageInput(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF4CAF50))
+                .background(if (isMicActive) Color(0xFFD32F2F) else Color(0xFF4CAF50))
         ) {
             Icon(
                 imageVector = Icons.Default.Mic,
