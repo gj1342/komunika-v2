@@ -30,6 +30,7 @@ import com.example.komunikav2.ui.components.UserTypeIndicator
 import com.example.komunikav2.ui.components.HearingCameraPopup
 import androidx.compose.runtime.collectAsState
 import com.example.komunikav2.navigation.Screen
+import com.example.komunikav2.services.VideoCatalog
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -128,7 +129,8 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                            timestamp = dateFormat.format(Date(message.timestamp)),
                            avatar = message.senderAvatar,
                            senderName = message.senderName,
-                           showVideoCard = messagesWithVideoCards.contains(message.id)
+                           showVideoCard = messagesWithVideoCards.contains(message.id),
+                           videoUris = if (messagesWithVideoCards.contains(message.id)) VideoCatalog.splitInputToUris(message.text) else emptyList()
                        )
                        
                        MultiPhoneChatMessage(

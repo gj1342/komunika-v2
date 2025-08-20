@@ -1,41 +1,31 @@
 package com.example.komunikav2.ui.screens
 
-import androidx.compose.foundation.background
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.komunikav2.R
+import com.example.komunikav2.services.VideoCatalog
 import com.example.komunikav2.ui.components.ChatMessage
 import com.example.komunikav2.ui.components.LatestText
 import com.example.komunikav2.ui.components.MessageInput
 import com.example.komunikav2.ui.components.TopBar
-import com.example.komunikav2.ui.components.VideoCard
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.colorResource
-import androidx.compose.foundation.Image
+import com.example.komunikav2.ui.components.VideoCardPlayer
 
 @Composable
 fun SinglePhoneScreen(navController: NavController) {
@@ -43,6 +33,7 @@ fun SinglePhoneScreen(navController: NavController) {
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var showClearConfirmation by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    var playlist by remember { mutableStateOf<List<Uri>>(emptyList()) }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -77,7 +68,7 @@ fun SinglePhoneScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                VideoCard()
+                VideoCardPlayer(uris = playlist)
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -108,6 +99,7 @@ fun SinglePhoneScreen(navController: NavController) {
                     onSendClick = {
                         if (messageText.isNotEmpty()) {
                             messages = messages + ChatMessage(messageText, true)
+                            playlist = VideoCatalog.splitInputToUris(messageText)
                             messageText = ""
                         }
                     }

@@ -22,6 +22,7 @@ import com.example.komunikav2.data.ChatMessage
 import com.example.komunikav2.services.NearbyConnectionService
 import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.ui.components.*
+import com.example.komunikav2.services.VideoCatalog
 import androidx.compose.runtime.collectAsState
 import java.text.SimpleDateFormat
 import java.util.*
@@ -120,7 +121,8 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
                         timestamp = dateFormat.format(Date(message.timestamp)),
                         avatar = message.senderAvatar,
                         senderName = message.senderName,
-                        showVideoCard = messagesWithVideoCards.contains(message.id)
+                        showVideoCard = messagesWithVideoCards.contains(message.id),
+                        videoUris = if (messagesWithVideoCards.contains(message.id)) VideoCatalog.splitInputToUris(message.text) else emptyList()
                     )
                     
                     MultiPhoneChatMessage(

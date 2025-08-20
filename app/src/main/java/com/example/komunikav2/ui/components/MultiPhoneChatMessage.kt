@@ -1,5 +1,6 @@
 package com.example.komunikav2.ui.components
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,7 +23,8 @@ data class MultiPhoneChatMessage(
     val timestamp: String,
     val avatar: String? = null,
     val senderName: String? = null,
-    val showVideoCard: Boolean = false
+    val showVideoCard: Boolean = false,
+    val videoUris: List<Uri> = emptyList()
 )
 
 @Composable
@@ -102,14 +104,8 @@ fun MultiPhoneChatMessage(
            if (message.showVideoCard) {
                Spacer(modifier = Modifier.height(16.dp))
                MultiPhoneVideoCard(
-                   onPlayClick = {
-                       // TODO: Handle video play
-                       println("Playing video for message: ${message.id}")
-                   },
-                   onExitClick = {
-                       // Hide the video card
-                       onMessageClick(message)
-                   }
+                   uris = message.videoUris,
+                   onExitClick = { onMessageClick(message) }
                )
            }
     }
