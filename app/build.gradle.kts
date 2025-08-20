@@ -50,8 +50,10 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            doNotCompress += setOf("mp4", "mov", "m4v", "webm")
         }
+    }
+    androidResources {
+        noCompress += listOf("mp4", "mov", "m4v", "webm")
     }
 }
 
@@ -95,6 +97,8 @@ dependencies {
     implementation(libs.vosk.android)
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
