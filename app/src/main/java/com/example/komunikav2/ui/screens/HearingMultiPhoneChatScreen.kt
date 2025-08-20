@@ -39,6 +39,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import java.util.*
+import com.example.komunikav2.services.TextToSpeechManager
 
 @Composable
 fun HearingMultiPhoneChatScreen(navController: NavController) {
@@ -64,10 +65,15 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
     // Track which messages have video cards visible
     var messagesWithVideoCards by remember { mutableStateOf(setOf<String>()) }
     
+    LaunchedEffect(Unit) {
+        TextToSpeechManager.initialize(context)
+    }
+    
     DisposableEffect(Unit) {
         onDispose {
             // Don't disconnect here as we want to maintain the connection
             // The connection will be managed by the service
+            TextToSpeechManager.shutdown()
         }
     }
     
@@ -106,13 +112,10 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
                 trailingContent = {
                     MultiPhoneUserDropdown(
-                        key = connectedUsers.size, // Force recomposition when user count changes
+                        key = connectedUsers.size,
                         connectedUsers = connectedUsers,
                         selectedUser = selectedUserForPrediction,
-                        onUserClick = { user ->
-                            // Header dropdown controls prediction target
-                            selectedUserForPrediction = user
-                        }
+                        onUserClick = { user -> selectedUserForPrediction = user }
                     )
                 }
             )
@@ -152,7 +155,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                            showVideoCard = messagesWithVideoCards.contains(message.id),
                            videoUris = if (messagesWithVideoCards.contains(message.id)) VideoCatalog.splitInputToUris(message.text) else emptyList()
                        )
-                       
+
                        MultiPhoneChatMessage(
                            message = multiPhoneMessage,
                            onMessageClick = { clickedMessage ->
@@ -162,15 +165,13 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                                } else {
                                    setOf(clickedMessage.id)
                                }
-                               
-                               // Auto-scroll to keep the clicked message visible when video card appears
+
                                if (!wasVideoCardVisible) {
+                                  TextToSpeechManager.speak(clickedMessage.text)
                                    val messageIndex = messages.indexOfFirst { it.id == clickedMessage.id }
                                    if (messageIndex != -1) {
                                        val reversedIndex = messages.size - 1 - messageIndex
-                                       coroutineScope.launch {
-                                           listState.animateScrollToItem(reversedIndex)
-                                       }
+                                       coroutineScope.launch { listState.animateScrollToItem(reversedIndex) }
                                    }
                                }
                            }
