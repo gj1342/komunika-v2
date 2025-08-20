@@ -14,6 +14,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
+import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.services.LabelService
 import com.example.komunikav2.ui.components.CategoryButton
 import com.example.komunikav2.ui.components.TopBar
@@ -75,7 +76,12 @@ fun NumbersScreen(navController: NavController) {
                         CategoryButton(
                             text = number.replace("_", " ").capitalize(),
                             onClick = {
-                                // TODO: Handle number selection
+                                val category = when {
+                                    number in listOf("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten") -> "numbers1-10"
+                                    number in listOf("eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen") -> "numbers11-19"
+                                    else -> "numbers20-100"
+                                }
+                                navController.navigate(Screen.CategoryFSLVideo.createRoute(category))
                             },
                             modifier = Modifier.height(56.dp)
                         )

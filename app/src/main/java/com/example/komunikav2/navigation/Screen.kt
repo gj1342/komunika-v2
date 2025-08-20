@@ -14,8 +14,12 @@ sealed class Screen(val route: String) {
         fun createRoute(category: String) = "category/$category"
     }
     object Numbers : Screen("numbers")
-    object CategoryFSLVideo : Screen("category_fsl_video/{category}") {
+    object CategoryFSLVideo : Screen("category_fsl_video/{category}?label={label}") {
         fun createRoute(category: String) = "category_fsl_video/$category"
+        fun createRoute(category: String, label: String): String {
+            val encoded = android.net.Uri.encode(label)
+            return "category_fsl_video/$category?label=$encoded"
+        }
     }
     object SignLanguageRecognition : Screen("sign_language_recognition")
 } 

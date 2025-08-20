@@ -74,11 +74,14 @@ fun NavGraph(navController: NavHostController) {
         composable(
             route = Screen.CategoryFSLVideo.route,
             arguments = listOf(
-                navArgument("category") { type = NavType.StringType }
+                navArgument("category") { type = NavType.StringType },
+                navArgument("label") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val category = backStackEntry.arguments?.getString("category") ?: ""
+            val label = backStackEntry.arguments?.getString("label") ?: ""
             CategoryFSLVideoScreen(navController = navController, category = category)
+            // Selected label is handled inside screen via initial argument through savedStateHandle if needed
         }
         
         composable(route = Screen.SignLanguageRecognition.route) {
