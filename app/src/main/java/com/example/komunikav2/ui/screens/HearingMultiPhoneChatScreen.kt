@@ -32,6 +32,12 @@ import androidx.compose.runtime.collectAsState
 import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.services.VideoCatalog
 import java.text.SimpleDateFormat
+import com.example.komunikav2.services.VoskSpeechRecognizer
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import java.util.*
 
 @Composable
@@ -44,6 +50,7 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
     var showCameraPopup by remember { mutableStateOf(false) }
     var predictionMessage by remember { mutableStateOf("") }
     var selectedUserForPrediction by remember { mutableStateOf<com.example.komunikav2.data.UserProfile?>(null) }
+    var isMicActive by remember { mutableStateOf(false) }
     
     val userType = userDataManager.getUserType()
     val listState = rememberLazyListState()
@@ -64,6 +71,19 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
         }
     }
     
+    val recordAudioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            VoskSpeechRecognizer.startListening(context) { text ->
+                coroutineScope.launch {
+                    currentMessage = (currentMessage + " " + text).trim()
+                }
+            }
+            isMicActive = true
+        }
+    }
+
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -168,11 +188,30 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                     }
                 },
                 onMicClick = {
-                    // TODO: Implement voice input
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (!hasPermission) {
+                        recordAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    } else {
+                        val currentlyListening = VoskSpeechRecognizer.isListening
+                        if (currentlyListening) {
+                            VoskSpeechRecognizer.stopListening()
+                            isMicActive = false
+                        } else {
+                            VoskSpeechRecognizer.startListening(context) { text ->
+                                coroutineScope.launch {
+                                    currentMessage = (currentMessage + " " + text).trim()
+                                }
+                            }
+                            isMicActive = true
+                        }
+                    }
                 },
                 onCameraClick = {
                     showCameraPopup = true
-                }
+                },
+                isMicActive = isMicActive
             )
         }
     }
