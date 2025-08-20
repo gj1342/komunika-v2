@@ -4,9 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -14,11 +17,21 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
 import com.example.komunikav2.navigation.Screen
+import com.example.komunikav2.services.LabelService
+import com.example.komunikav2.ui.components.SearchBar
 import com.example.komunikav2.ui.components.TopBar
 import com.example.komunikav2.ui.components.VocabularyCategoryButton
+import kotlinx.coroutines.launch
 
 @Composable
 fun VocabularyScreen(navController: NavController) {
+    val context = LocalContext.current
+    val labelService = remember(context) { LabelService(context) }
+    val scope = rememberCoroutineScope()
+
+    var query by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+
     val vocabularyCategories = listOf(
         VocabularyCategory(R.drawable.greetings, R.string.greetings, R.color.button_light_blue, "greetings"),
         VocabularyCategory(R.drawable.wh_questions, R.string.wh_questions, R.color.button_orange, "questions"),
@@ -57,129 +70,175 @@ fun VocabularyScreen(navController: NavController) {
                 backgroundColor = androidx.compose.ui.graphics.Color.Transparent
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            LazyColumn(
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                item {
-                    // Row 1: 4 standard buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        vocabularyCategories.take(4).forEach { category ->
-                            VocabularyCategoryButton(
-                                iconResId = category.iconResId,
-                                text = stringResource(id = category.textResId),
-                                backgroundColor = colorResource(id = category.colorResId),
-                                onClick = { 
-                                    if (category.categoryKey == "numbers") {
-                                        navController.navigate(Screen.Numbers.route)
-                                    } else {
-                                        navController.navigate(Screen.Category.createRoute(category.categoryKey))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
+            SearchBar(
+                value = query,
+                onValueChange = { text ->
+                    query = text
+                    if (text.isBlank()) {
+                        searchResults = emptyList()
+                    } else {
+                        scope.launch {
+                            val all = listOf(
+                                "greetings", "questions", "gender", "survival", "calendar", "time",
+                                "people", "places", "family", "food", "colors", "pronouns", "verbs",
+                                "adjectives_and_adverbs", "alphabets", "numbers1-10", "numbers11-19", "numbers20-100"
                             )
+                            val results = mutableListOf<Pair<String, String>>()
+                            for (cat in all) {
+                                val labels = labelService.loadLabelsForCategory(cat)
+                                labels.filter { it.contains(text.trim(), ignoreCase = true) }
+                                    .forEach { label -> results += cat to label }
+                            }
+                            searchResults = results
                         }
                     }
-                }
-                
-                item {
-                    // Row 2: 4 standard buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        vocabularyCategories.drop(4).take(4).forEach { category ->
-                            VocabularyCategoryButton(
-                                iconResId = category.iconResId,
-                                text = stringResource(id = category.textResId),
-                                backgroundColor = colorResource(id = category.colorResId),
-                                onClick = { 
-                                    if (category.categoryKey == "numbers") {
-                                        navController.navigate(Screen.Numbers.route)
-                                    } else {
-                                        navController.navigate(Screen.Category.createRoute(category.categoryKey))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                },
+                placeholderText = stringResource(R.string.search_hint),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (searchResults.isNotEmpty()) {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(searchResults) { (category, label) ->
+                        VocabularyCategoryButton(
+                            iconResId = R.drawable.ic_launcher_foreground,
+                            text = label.replace('_', ' '),
+                            backgroundColor = colorResource(id = R.color.button_light_blue),
+                            onClick = { navController.navigate(Screen.CategoryFSLVideo.createRoute(category, label)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
-                
-                item {
-                    // Row 3: 4 standard buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        vocabularyCategories.drop(8).take(4).forEach { category ->
-                            VocabularyCategoryButton(
-                                iconResId = category.iconResId,
-                                text = stringResource(id = category.textResId),
-                                backgroundColor = colorResource(id = category.colorResId),
-                                onClick = { 
-                                    if (category.categoryKey == "numbers") {
-                                        navController.navigate(Screen.Numbers.route)
-                                    } else {
-                                        navController.navigate(Screen.Category.createRoute(category.categoryKey))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            vocabularyCategories.take(4).forEach { category ->
+                                VocabularyCategoryButton(
+                                    iconResId = category.iconResId,
+                                    text = stringResource(id = category.textResId),
+                                    backgroundColor = colorResource(id = category.colorResId),
+                                    onClick = {
+                                        if (category.categoryKey == "numbers") {
+                                            navController.navigate(Screen.Numbers.route)
+                                        } else {
+                                            navController.navigate(Screen.Category.createRoute(category.categoryKey))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
-                }
-                
-                item {
-                    // Row 4: 4 standard buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        vocabularyCategories.drop(12).take(4).forEach { category ->
-                            VocabularyCategoryButton(
-                                iconResId = category.iconResId,
-                                text = stringResource(id = category.textResId),
-                                backgroundColor = colorResource(id = category.colorResId),
-                                onClick = { 
-                                    if (category.categoryKey == "numbers") {
-                                        navController.navigate(Screen.Numbers.route)
-                                    } else {
-                                        navController.navigate(Screen.Category.createRoute(category.categoryKey))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            vocabularyCategories.drop(4).take(4).forEach { category ->
+                                VocabularyCategoryButton(
+                                    iconResId = category.iconResId,
+                                    text = stringResource(id = category.textResId),
+                                    backgroundColor = colorResource(id = category.colorResId),
+                                    onClick = {
+                                        if (category.categoryKey == "numbers") {
+                                            navController.navigate(Screen.Numbers.route)
+                                        } else {
+                                            navController.navigate(Screen.Category.createRoute(category.categoryKey))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
-                }
-                
-                item {
-                    // Row 5: 2 wide buttons (Adjectives & Adverbs, Alphabets)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        vocabularyCategories.drop(16).take(2).forEach { category ->
-                            VocabularyCategoryButton(
-                                iconResId = category.iconResId,
-                                text = stringResource(id = category.textResId),
-                                backgroundColor = colorResource(id = category.colorResId),
-                                onClick = { 
-                                    if (category.categoryKey == "numbers") {
-                                        navController.navigate(Screen.Numbers.route)
-                                    } else {
-                                        navController.navigate(Screen.Category.createRoute(category.categoryKey))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f)
-                            )
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            vocabularyCategories.drop(8).take(4).forEach { category ->
+                                VocabularyCategoryButton(
+                                    iconResId = category.iconResId,
+                                    text = stringResource(id = category.textResId),
+                                    backgroundColor = colorResource(id = category.colorResId),
+                                    onClick = {
+                                        if (category.categoryKey == "numbers") {
+                                            navController.navigate(Screen.Numbers.route)
+                                        } else {
+                                            navController.navigate(Screen.Category.createRoute(category.categoryKey))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            vocabularyCategories.drop(12).take(4).forEach { category ->
+                                VocabularyCategoryButton(
+                                    iconResId = category.iconResId,
+                                    text = stringResource(id = category.textResId),
+                                    backgroundColor = colorResource(id = category.colorResId),
+                                    onClick = {
+                                        if (category.categoryKey == "numbers") {
+                                            navController.navigate(Screen.Numbers.route)
+                                        } else {
+                                            navController.navigate(Screen.Category.createRoute(category.categoryKey))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            vocabularyCategories.drop(16).take(2).forEach { category ->
+                                VocabularyCategoryButton(
+                                    iconResId = category.iconResId,
+                                    text = stringResource(id = category.textResId),
+                                    backgroundColor = colorResource(id = category.colorResId),
+                                    onClick = {
+                                        if (category.categoryKey == "numbers") {
+                                            navController.navigate(Screen.Numbers.route)
+                                        } else {
+                                            navController.navigate(Screen.Category.createRoute(category.categoryKey))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
                 }

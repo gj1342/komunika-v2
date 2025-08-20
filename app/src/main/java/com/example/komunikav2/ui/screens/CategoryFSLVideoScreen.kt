@@ -11,11 +11,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.komunikav2.R
+import android.net.Uri
 import com.example.komunikav2.services.LabelService
+import com.example.komunikav2.services.VideoCatalog
 import com.example.komunikav2.ui.components.CategoryFilterButtons
 import com.example.komunikav2.ui.components.PlayButton
 import com.example.komunikav2.ui.components.TopBar
 import com.example.komunikav2.ui.components.VideoCard
+import com.example.komunikav2.ui.components.VideoCardPlayer
 import kotlinx.coroutines.launch
 
 @Composable
@@ -30,17 +33,25 @@ fun CategoryFSLVideoScreen(
     var labels by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedLabel by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    
+    var videoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var replayTrigger by remember { mutableStateOf(0) }
+
+    val initialLabel = navController.currentBackStackEntry?.arguments?.getString("label")?.takeIf { it.isNotBlank() }
+
     val categoryTitle = labelService.getCategoryTitle(category)
-    
+
     LaunchedEffect(category) {
         coroutineScope.launch {
             labels = labelService.loadLabelsForCategory(category)
-            if (labels.isNotEmpty()) {
-                selectedLabel = labels.first()
-            }
+            selectedLabel = if (initialLabel != null && labels.contains(initialLabel)) initialLabel else labels.firstOrNull()
             isLoading = false
         }
+    }
+
+    LaunchedEffect(selectedLabel) {
+        videoUris = selectedLabel?.let { label ->
+            VideoCatalog.getUriForPhrase(label)?.let { listOf(it) } ?: emptyList()
+        } ?: emptyList()
     }
     
     Box(modifier = Modifier.fillMaxSize()) {
@@ -87,14 +98,17 @@ fun CategoryFSLVideoScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        VideoCard()
+                        if (videoUris.isNotEmpty()) {
+                            VideoCardPlayer(uris = videoUris, replayTrigger = replayTrigger)
+                        } else {
+                            VideoCard()
+                        }
                         
                         Spacer(modifier = Modifier.height(32.dp))
                         
                         PlayButton(
                             onClick = {
-                                // TODO: Handle video play for selected label
-                                println("Playing video for: ${selectedLabel}")
+                                replayTrigger++
                             }
                         )
                     }

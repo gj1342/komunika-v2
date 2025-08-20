@@ -45,15 +45,23 @@ fun VideoCard() {
             contentAlignment = Alignment.Center
         ) {}
     }
-} 
+}
 
 @OptIn(UnstableApi::class)
 @Composable
-fun VideoCardPlayer(uris: List<Uri>) {
+fun VideoCardPlayer(uris: List<Uri>, replayTrigger: Int = 0) {
     val context = LocalContext.current
     val player = remember {
         ExoPlayer.Builder(context).build()
     }
+    
+    LaunchedEffect(replayTrigger) {
+        if (uris.isNotEmpty()) {
+            player.seekTo(0)
+            player.playWhenReady = true
+        }
+    }
+    
     LaunchedEffect(uris) {
         player.clearMediaItems()
         uris.forEach { uri ->
@@ -66,6 +74,7 @@ fun VideoCardPlayer(uris: List<Uri>) {
             player.stop()
         }
     }
+    
     DisposableEffect(Unit) {
         onDispose {
             player.release()

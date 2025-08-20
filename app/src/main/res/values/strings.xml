@@ -60,4 +60,5 @@
     <string name="phone_icon_description">Phone with arrow</string>
     <string name="wifi_bluetooth_location_description">Wi-Fi, Bluetooth and Location services</string>
     <string name="camera">Camera</string>
+    <string name="search_hint">Search signs...</string>
 </resources>
