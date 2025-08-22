@@ -32,6 +32,7 @@ fun VocabularyModal(
 ) {
     
     val vocabularyCategories = listOf(
+        VocabularyCategory(R.drawable.alphabets, R.string.alphabets, R.color.button_light_blue, "alphabets"),
         VocabularyCategory(R.drawable.greetings, R.string.greetings, R.color.button_light_blue, "greetings"),
         VocabularyCategory(R.drawable.wh_questions, R.string.wh_questions, R.color.button_orange, "questions"),
         VocabularyCategory(R.drawable.gender, R.string.gender, R.color.button_blue, "gender"),

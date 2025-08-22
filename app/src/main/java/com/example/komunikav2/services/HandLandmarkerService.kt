@@ -53,6 +53,8 @@ class HandLandmarkerService(
     
     private var lastProcessTime = 0L
     private val minProcessInterval = 33L
+    private var frameCounter = 0
+    private val slidingWindowStride = 3  // Process every 3rd frame like Python reference
     private var landmarkBuffer: MutableList<List<Float>> = mutableListOf()
     private var currentCategory: String? = null
     private var isPredicting = false
@@ -71,7 +73,7 @@ class HandLandmarkerService(
     
     companion object {
         private const val BUFFER_SIZE = 30
-        private const val PREDICTION_THRESHOLD = 0.3f
+        private const val PREDICTION_THRESHOLD = 0.7f  // Increased to match Python reference (70%)
     }
     
     interface LandmarkerListener {
@@ -221,19 +223,72 @@ class HandLandmarkerService(
         // Notify listener about results
         handLandmarkerListener?.onResults(ResultBundle(result, image.height, image.width))
         
+        // Always process landmarks for prediction, even when no hands detected (like Python reference)
         if (result.landmarks().isNotEmpty()) {
             calculateBoundingBox(result, image.width, image.height)
             Log.d("HandLandmarkerService", "Processing landmarks for prediction")
+
+            val hands = result.landmarks()
             
-            // Combine all detected hands into single landmark list
-            val allLandmarks = result.landmarks().flatMap { it }
-            processLandmarksForPrediction(allLandmarks)
+            // Handle front camera mirroring: when image is mirrored, left/right hands are swapped
+            // For front camera: first detected hand = right hand (mirrored), second = left hand (mirrored)
+            // For back camera: first detected hand = left hand, second = right hand
+            val leftHand = if (hands.isNotEmpty()) {
+                if (isFrontCamera && hands.size > 1) hands[1] else hands[0]
+            } else null
+            val rightHand = if (hands.size > 1) {
+                if (isFrontCamera) hands[0] else hands[1]
+            } else null
+
+            Log.d("HandLandmarkerService", "Front camera: $isFrontCamera, Hands detected: ${hands.size}, Left hand: ${leftHand != null}, Right hand: ${rightHand != null}")
+            processLandmarksForPrediction(leftHand, rightHand)
         } else {
             _handBoundingBox.value = null
-            Log.d("HandLandmarkerService", "No hands detected")
+            Log.d("HandLandmarkerService", "No hands detected - adding zero frame")
+            // Add zero frame when no hands detected (like Python reference)
+            processLandmarksForPrediction(null, null)
         }
     }
     
+    private fun processLandmarksForPrediction(
+        leftHand: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>?,
+        rightHand: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>?
+    ) {
+        if (currentCategory == null || signLanguagePredictor?.isModelLoaded() != true) {
+            Log.d("HandLandmarkerService", "Skipping prediction: category=$currentCategory, modelLoaded=${signLanguagePredictor?.isModelLoaded()}")
+            return
+        }
+
+        val leftData = leftHand?.let { normalizeHandLandmarks(it) } ?: List(63) { 0.0f }
+        val rightData = rightHand?.let { normalizeHandLandmarks(it) } ?: List(63) { 0.0f }
+        val landmarkData = leftData + rightData
+
+        landmarkBuffer.add(landmarkData)
+        Log.d("HandLandmarkerService", "Added landmark frame with ${landmarkData.size} coordinates. Buffer size: ${landmarkBuffer.size}/$BUFFER_SIZE")
+
+        // Use sliding window approach like Python reference
+        if (landmarkBuffer.size > BUFFER_SIZE) {
+            landmarkBuffer.removeAt(0) // Remove oldest frame
+        }
+
+        // Only make prediction when hands are actually detected in current frame (like Python reference)
+        val hasHandsInCurrentFrame = leftHand != null || rightHand != null
+        if (landmarkBuffer.size >= kotlin.math.min(10, BUFFER_SIZE) && !isPredicting && hasHandsInCurrentFrame) {
+            val currentTime = SystemClock.uptimeMillis()
+            if (currentTime - lastPredictionTime >= minPredictionInterval) {
+                Log.d("HandLandmarkerService", "Buffer ready and hands detected, triggering prediction")
+                lastPredictionTime = currentTime
+                makePrediction()
+                // Don't clear buffer - keep sliding window
+            } else {
+                val timeRemaining = minPredictionInterval - (currentTime - lastPredictionTime)
+                Log.d("HandLandmarkerService", "Prediction cooldown active, ${timeRemaining}ms remaining")
+            }
+        } else if (!hasHandsInCurrentFrame) {
+            Log.d("HandLandmarkerService", "No hands in current frame - skipping prediction")
+        }
+    }
+
     private fun calculateBoundingBox(
         result: HandLandmarkerResult,
         imageWidth: Int,
@@ -331,62 +386,47 @@ class HandLandmarkerService(
         }
     }
     
-    private fun processLandmarksForPrediction(landmarks: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>) {
-        if (currentCategory == null || signLanguagePredictor?.isModelLoaded() != true) {
-            Log.d("HandLandmarkerService", "Skipping prediction: category=$currentCategory, modelLoaded=${signLanguagePredictor?.isModelLoaded()}")
-            return
-        }
-        
-        // Process landmarks for proper two-hand format
-        val landmarkData = processLandmarksForTwoHands(landmarks)
-        
-        landmarkBuffer.add(landmarkData)
-        Log.d("HandLandmarkerService", "Added landmark frame with ${landmarkData.size} coordinates. Buffer size: ${landmarkBuffer.size}/$BUFFER_SIZE")
-        
-        // Only predict when buffer is exactly full
-        if (landmarkBuffer.size == BUFFER_SIZE && !isPredicting) {
-            val currentTime = SystemClock.uptimeMillis()
-            if (currentTime - lastPredictionTime >= minPredictionInterval) {
-                Log.d("HandLandmarkerService", "Buffer full, triggering prediction")
-                lastPredictionTime = currentTime
-                makePrediction()
-                // Clear buffer after prediction for fresh start
-                landmarkBuffer.clear()
-            } else {
-                val timeRemaining = minPredictionInterval - (currentTime - lastPredictionTime)
-                Log.d("HandLandmarkerService", "Prediction cooldown active, ${timeRemaining}ms remaining")
-            }
-        }
-    }
+
     
-    private fun processLandmarksForTwoHands(landmarks: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>): List<Float> {
-        // Check if we have enough landmarks for two hands (42 landmarks = 21 per hand)
-        val hasTwoHands = landmarks.size >= 42
-        
-        if (hasTwoHands) {
-            // Extract landmarks for both hands
-            val hand1Landmarks = landmarks.take(21)
-            val hand2Landmarks = landmarks.drop(21).take(21)
-            
-            val hand1Data = hand1Landmarks.flatMap { landmark ->
-                listOf(landmark.x(), landmark.y(), landmark.z())
-            }
-            val hand2Data = hand2Landmarks.flatMap { landmark ->
-                listOf(landmark.x(), landmark.y(), landmark.z())
-            }
-            
-            Log.d("HandLandmarkerService", "Processing two hands: ${hand1Landmarks.size} + ${hand2Landmarks.size} landmarks")
-            return hand1Data + hand2Data
-        } else {
-            // Single hand - pad with zeros for second hand
-            val hand1Data = landmarks.flatMap { landmark ->
-                listOf(landmark.x(), landmark.y(), landmark.z())
-            }
-            val hand2Data = List(63) { 0.0f }
-            
-            Log.d("HandLandmarkerService", "Processing single hand: ${landmarks.size} landmarks, padding second hand")
-            return hand1Data + hand2Data
+
+    
+    private fun normalizeHandLandmarks(handLandmarks: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>): List<Float> {
+        if (handLandmarks.isEmpty()) {
+            return List(63) { 0.0f } // 21 landmarks * 3 coordinates
         }
+        
+        // Get wrist landmark (base of the hand) - index 0
+        val wrist = handLandmarks[0]
+        
+        // Find max distance from wrist to any finger tip for normalization
+        val fingerTipIndices = listOf(4, 8, 12, 16, 20) // Finger tips indices
+        var maxDist = 0.0f
+        
+        for (tipIdx in fingerTipIndices) {
+            if (tipIdx < handLandmarks.size) {
+                val tip = handLandmarks[tipIdx]
+                val dx = tip.x() - wrist.x()
+                val dy = tip.y() - wrist.y()
+                val dz = tip.z() - wrist.z()
+                val dist = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+                maxDist = kotlin.math.max(maxDist, dist)
+            }
+        }
+        
+        // If max_dist is too small, use a default value to avoid division by near-zero
+        if (maxDist < 0.001f) {
+            maxDist = 0.1f
+        }
+        
+        // Normalize all points relative to wrist and hand size
+        val normalized = mutableListOf<Float>()
+        for (landmark in handLandmarks) {
+            normalized.add((landmark.x() - wrist.x()) / maxDist)
+            normalized.add((landmark.y() - wrist.y()) / maxDist)
+            normalized.add((landmark.z() - wrist.z()) / maxDist)
+        }
+        
+        return normalized
     }
     
     private fun makePrediction() {
@@ -417,7 +457,7 @@ class HandLandmarkerService(
                     val predictionText = result.prediction
                     val confidence = result.confidence
                     
-                    Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%)")
+                    Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%, threshold: ${(PREDICTION_THRESHOLD * 100).toInt()}%)")
 
                     val now2 = SystemClock.uptimeMillis()
                     if (blockedPrediction != null && now2 < blockPredictionUntilMs && predictionText.equals(blockedPrediction, ignoreCase = true)) {
@@ -469,9 +509,16 @@ class HandLandmarkerService(
         this.isFrontCamera = isFrontCamera
         val currentTime = SystemClock.uptimeMillis()
         _frameCount.value += 1
+        frameCounter += 1
         
         // Limit processing rate for smooth performance
         if (currentTime - lastProcessTime < minProcessInterval) {
+            imageProxy.close()
+            return
+        }
+        
+        // Process every 3rd frame like Python reference
+        if (frameCounter % slidingWindowStride != 0) {
             imageProxy.close()
             return
         }
