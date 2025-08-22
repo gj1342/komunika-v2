@@ -27,6 +27,7 @@ class SignLanguagePredictor(private val context: Context) {
         private const val LABELS_PATH_PREFIX = "labels/"
         
         private val MODEL_MAPPING = mapOf(
+            "alphabets" to "alphabets.tflite",
             "family" to "family.tflite",
             "gender" to "gender.tflite", 
             "numbers1-10" to "1_to_10.tflite",
@@ -39,11 +40,12 @@ class SignLanguagePredictor(private val context: Context) {
         )
         
         private val AVAILABLE_CATEGORIES = setOf(
-            "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
+            "alphabets", "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
             "people", "places", "questions", "time"
         )
         
         private val LABELS_MAPPING = mapOf(
+            "alphabets" to "alphabets_labels.txt",
             "family" to "family_labels.txt",
             "gender" to "gender_labels.txt",
             "numbers1-10" to "numbers1-10_labels.txt",
@@ -205,7 +207,7 @@ class SignLanguagePredictor(private val context: Context) {
                 val padding = List(SEQUENCE_LENGTH - landmarks.size) { 
                     List(NUM_KEYPOINTS) { 0.0f } 
                 }
-                padding + landmarks
+                padding + landmarks  // Zeros first, then data (exactly like Python reference)
             }
             else -> landmarks
         }
