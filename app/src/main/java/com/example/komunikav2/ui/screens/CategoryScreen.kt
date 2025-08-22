@@ -77,7 +77,7 @@ fun CategoryScreen(
                         CategoryButton(
                             text = label.replace("_", " ").capitalize(),
                             onClick = {
-                                navController.navigate(Screen.CategoryFSLVideo.createRoute(category))
+                                navController.navigate(Screen.CategoryFSLVideo.createRoute(category, label))
                             },
                             modifier = Modifier.height(56.dp)
                         )
