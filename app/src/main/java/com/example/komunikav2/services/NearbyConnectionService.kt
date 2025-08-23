@@ -51,6 +51,15 @@ data class PredictionPauseMessage(
     val eventId: String = java.util.UUID.randomUUID().toString()
 )
 
+@Serializable
+data class UserSelectionMessage(
+    val type: String,
+    val fromUserId: String,
+    val targetUserId: String,
+    val selected: Boolean,
+    val eventId: String = java.util.UUID.randomUUID().toString()
+)
+
 class NearbyConnectionService private constructor(private val context: Context) {
     
     private val connectionsClient = Nearby.getConnectionsClient(context)
@@ -84,6 +93,9 @@ class NearbyConnectionService private constructor(private val context: Context) 
     val predictionSentSignals: StateFlow<PredictionSentMessage?> = _predictionSentSignals.asStateFlow()
     private val _predictionPauseSignals = MutableStateFlow<PredictionPauseMessage?>(null)
     val predictionPauseSignals: StateFlow<PredictionPauseMessage?> = _predictionPauseSignals.asStateFlow()
+    
+    private val _userSelectionNotifications = MutableStateFlow<UserSelectionMessage?>(null)
+    val userSelectionNotifications: StateFlow<UserSelectionMessage?> = _userSelectionNotifications.asStateFlow()
     
     private var currentUserProfile: UserProfile? = null
     private var currentServiceId: String? = null
@@ -536,6 +548,31 @@ class NearbyConnectionService private constructor(private val context: Context) 
         }
     }
     
+    fun sendUserSelectionNotification(targetUserId: String, selected: Boolean) {
+        Log.d(TAG, "sendUserSelectionNotification called: targetUserId=$targetUserId, selected=$selected")
+        if (connectedEndpointIds.isEmpty()) {
+            Log.w(TAG, "No connected endpoints to send user selection notification to")
+            return
+        }
+        if (currentUserProfile == null) {
+            Log.e(TAG, "Cannot send user selection notification: currentUserProfile is null")
+            return
+        }
+        val selectionMessage = UserSelectionMessage(
+            type = "user_selection",
+            fromUserId = currentUserProfile?.id ?: "",
+            targetUserId = targetUserId,
+            selected = selected
+        )
+        val messageJson = json.encodeToString(selectionMessage)
+        val payload = Payload.fromBytes(messageJson.toByteArray())
+        for (endpointId in connectedEndpointIds) {
+            connectionsClient.sendPayload(endpointId, payload)
+                .addOnSuccessListener { Log.d(TAG, "User selection notification sent to $endpointId") }
+                .addOnFailureListener { e -> Log.e(TAG, "Failed to send user selection notification to $endpointId", e) }
+        }
+    }
+    
     private fun sendUserProfile(endpointId: String) {
         currentUserProfile?.let { profile ->
             val profileJson = json.encodeToString(profile)
@@ -606,6 +643,17 @@ class NearbyConnectionService private constructor(private val context: Context) 
                 val pauseMessage = json.decodeFromString<PredictionPauseMessage>(data)
                 Log.d(TAG, "Received prediction pause from user: ${pauseMessage.fromUserId}, paused=${pauseMessage.paused}")
                 _predictionPauseSignals.value = pauseMessage
+            } else if (data.contains("\"type\":\"user_selection\"")) {
+                val selectionMessage = json.decodeFromString<UserSelectionMessage>(data)
+                Log.d(TAG, "Received user selection notification: from=${selectionMessage.fromUserId}, target=${selectionMessage.targetUserId}, selected=${selectionMessage.selected}")
+                
+                // Only process if this selection notification is for the current user
+                if (selectionMessage.targetUserId == currentUserProfile?.id) {
+                    _userSelectionNotifications.value = selectionMessage
+                    Log.d(TAG, "User selection notification accepted for current user")
+                } else {
+                    Log.d(TAG, "User selection notification ignored - not for this user")
+                }
             } else {
                 Log.w(TAG, "Unknown data format received: $data")
             }

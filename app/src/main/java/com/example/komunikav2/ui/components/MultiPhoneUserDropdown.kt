@@ -31,15 +31,15 @@ fun MultiPhoneUserDropdown(
     Box {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(Color.White.copy(alpha = 0.2f))
                 .clickable { expanded = true }
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = selectedUser?.name ?: if (connectedUsers.isNotEmpty()) "Select User" else "No Users",
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White
             )
@@ -48,29 +48,29 @@ fun MultiPhoneUserDropdown(
                 imageVector = Icons.Default.KeyboardArrowDown,
                 contentDescription = "Dropdown",
                 tint = Color.White,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(14.dp)
             )
             
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(20.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "👥",
-                    fontSize = 12.sp
+                    fontSize = 10.sp
                 )
             }
             
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             
             Text(
                 text = connectedUsers.size.toString(),
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )

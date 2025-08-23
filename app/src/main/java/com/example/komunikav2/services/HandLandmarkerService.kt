@@ -244,9 +244,10 @@ class HandLandmarkerService(
             processLandmarksForPrediction(leftHand, rightHand)
         } else {
             _handBoundingBox.value = null
-            Log.d("HandLandmarkerService", "No hands detected - adding zero frame")
-            // Add zero frame when no hands detected (like Python reference)
-            processLandmarksForPrediction(null, null)
+            Log.d("HandLandmarkerService", "No hands detected - clearing buffer")
+            // Clear buffer when no hands detected to avoid mixed data
+            landmarkBuffer.clear()
+            isPredicting = false
         }
     }
     

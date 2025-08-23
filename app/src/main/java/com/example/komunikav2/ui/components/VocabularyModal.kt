@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +30,9 @@ fun VocabularyModal(
     onSendMessage: (String) -> Unit,
     predictionMessage: String = "",
     onPredictionMessageChange: (String) -> Unit = {},
-    selectedCategory: String? = null
+    selectedCategory: String? = null,
+    isModelReady: Boolean = false,
+    isHandDetected: Boolean = false
 ) {
     
     val vocabularyCategories = listOf(
@@ -94,6 +98,75 @@ fun VocabularyModal(
                             fontSize = 18.sp,
                             color = Color.Gray
                         )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Ready/Sign Status Indicator
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                                                 containerColor = when {
+                             selectedCategory == null -> androidx.compose.ui.graphics.Color(0xFFFF9800).copy(alpha = 0.1f)
+                             !isModelReady -> Color.Yellow.copy(alpha = 0.1f)
+                             isHandDetected -> Color.Green.copy(alpha = 0.1f)
+                             else -> Color.Blue.copy(alpha = 0.1f)
+                         }
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .                                     background(
+                                         when {
+                                             selectedCategory == null -> androidx.compose.ui.graphics.Color(0xFFFF9800)
+                                             !isModelReady -> Color.Yellow
+                                             isHandDetected -> Color.Green
+                                             else -> Color.Blue
+                                         }
+                                     )
+                            )
+                            
+                            Text(
+                                text = when {
+                                    selectedCategory == null -> "Select a category to start"
+                                    !isModelReady -> "Loading model..."
+                                    isHandDetected -> "Ready to sign"
+                                    else -> "Show your hands"
+                                },
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                                                 color = when {
+                                     selectedCategory == null -> androidx.compose.ui.graphics.Color(0xFFFF9800)
+                                     !isModelReady -> Color.Black
+                                     isHandDetected -> Color.Green
+                                     else -> Color.Blue
+                                 }
+                            )
+                        }
+                        
+                        if (selectedCategory != null) {
+                            Text(
+                                text = selectedCategory.replace("_", " ").uppercase(),
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
                 

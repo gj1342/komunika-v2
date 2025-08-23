@@ -33,6 +33,10 @@ import com.example.komunikav2.services.HandLandmarkerService
 import com.example.komunikav2.services.NearbyConnectionService
 import androidx.compose.runtime.collectAsState
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @Composable
 fun SignLanguageRecognitionScreen(navController: NavController) {
@@ -40,6 +44,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var currentSentence by remember { mutableStateOf("") }
     var predictionHistory by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isModelReady by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val handLandmarkerService = remember { HandLandmarkerService(context) }
     val nearbyService = remember { NearbyConnectionService.getInstance(context) }
@@ -57,6 +62,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
             
             override fun onError(error: String, errorCode: Int) {
                 Log.e("SignLanguageRecognition", "Error: $error (Code: $errorCode)")
+                isModelReady = false
             }
             
             override fun onPrediction(prediction: String) {
@@ -148,7 +154,9 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                     .fillMaxWidth()
                     .height(300.dp)
                     .padding(horizontal = 16.dp),
-                handLandmarkerService = handLandmarkerService
+                handLandmarkerService = handLandmarkerService,
+                isModelReady = isModelReady,
+                selectedCategory = selectedCategory
             )
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -183,8 +191,18 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                                     },
                                     onClick = { 
                                         selectedCategory = category.categoryKey
+                                        isModelReady = false // Reset model ready state
                                         Log.d("SignLanguageRecognition", "Selected category: $selectedCategory")
                                         handLandmarkerService.loadModelsAndLabels(category.categoryKey)
+                                        
+                                        // Set model ready after a short delay (simulating model loading)
+                                        CoroutineScope(Dispatchers.Main).launch {
+                                            delay(1000) // 1 second delay
+                                            if (selectedCategory == category.categoryKey) {
+                                                isModelReady = true
+                                                Log.d("SignLanguageRecognition", "Model ready for category: $selectedCategory")
+                                            }
+                                        }
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
