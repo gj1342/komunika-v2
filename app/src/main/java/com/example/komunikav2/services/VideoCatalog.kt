@@ -161,6 +161,22 @@ object VideoCatalog {
             "CALENDAR/tuesday.mp4",
             "CALENDAR/wednesday.mp4",
         ),
+        "colors" to listOf(
+            "COLORS/black.mp4",
+            "COLORS/blue.mp4",
+            "COLORS/brown.mp4",
+            "COLORS/dark.mp4",
+            "COLORS/gray.mp4",
+            "COLORS/green.mp4",
+            "COLORS/light.mp4",
+            "COLORS/orange.mp4",
+            "COLORS/pink.mp4",
+            "COLORS/red.mp4",
+            "COLORS/tan.mp4",
+            "COLORS/violet.mp4",
+            "COLORS/white.mp4",
+            "COLORS/yellow.mp4",
+        ),
         "alphabets" to ('a'..'z').map { "ALPHABETS/${it}.mp4" },
     )
 
@@ -230,6 +246,7 @@ object VideoCatalog {
             "family",
             "food",
             "calendar",
+            "colors",
             "alphabets"
         ).forEach { key ->
             prioritized += (categoryToFiles[key] ?: emptyList())
