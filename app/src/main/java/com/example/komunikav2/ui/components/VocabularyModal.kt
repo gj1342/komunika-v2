@@ -21,9 +21,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.komunikav2.R
-import com.example.komunikav2.services.VideoCatalog
-import com.example.komunikav2.ui.components.VideoCardPlayer
-import android.net.Uri
 
 @Composable
 fun VocabularyModal(
@@ -35,8 +32,7 @@ fun VocabularyModal(
     onPredictionMessageChange: (String) -> Unit = {},
     selectedCategory: String? = null,
     isModelReady: Boolean = false,
-    isHandDetected: Boolean = false,
-    originalPredictionMessage: String = ""
+    isHandDetected: Boolean = false
 ) {
     
     val vocabularyCategories = listOf(
@@ -201,15 +197,6 @@ fun VocabularyModal(
                             fontSize = 16.sp,
                             color = if (predictionMessage.isEmpty()) Color.Gray else Color.Black
                         )
-                        
-                        // Video player for prediction
-                        if (originalPredictionMessage.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            val videoUris = VideoCatalog.splitInputToUris(originalPredictionMessage)
-                            if (videoUris.isNotEmpty()) {
-                                VideoCardPlayer(uris = videoUris)
-                            }
-                        }
                         
                         Spacer(modifier = Modifier.height(12.dp))
                         

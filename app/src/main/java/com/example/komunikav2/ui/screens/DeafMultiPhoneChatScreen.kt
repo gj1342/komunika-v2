@@ -52,9 +52,8 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
     // Track vocabulary modal visibility
     var showVocabularyModal by remember { mutableStateOf(false) }
     
-    // Track prediction message (both original for video mapping and cleaned for display)
+    // Track prediction message
     var predictionMessage by remember { mutableStateOf("") }
-    var originalPredictionMessage by remember { mutableStateOf("") }
     
     // Track currently selected category for visual indication
     var selectedCategory by remember { mutableStateOf<String?>(null) }
@@ -76,10 +75,7 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
     // Update prediction message when incoming predictions arrive
     LaunchedEffect(incomingPredictions) {
         incomingPredictions?.let { prediction ->
-            // Store original prediction for video mapping
-            originalPredictionMessage = prediction.prediction
-            // Display cleaned version for user readability
-            predictionMessage = originalPredictionMessage.replace("_", " ").replace("-", " ")
+            predictionMessage = prediction.prediction
             // When we receive a prediction, it means hands were detected
             isHandDetected = true
         }
@@ -259,8 +255,7 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
                 },
                 selectedCategory = selectedCategory,
                 isModelReady = isModelReady,
-                isHandDetected = isHandDetected,
-                originalPredictionMessage = originalPredictionMessage
+                isHandDetected = isHandDetected
             )
         }
     }

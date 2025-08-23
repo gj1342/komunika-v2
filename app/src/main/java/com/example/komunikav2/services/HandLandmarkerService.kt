@@ -455,7 +455,7 @@ class HandLandmarkerService(
                 }
 
                 if (result != null) {
-                    val predictionText = result.prediction
+                    val predictionText = result.prediction.replace("_", " ").replace("-", " ")
                     val confidence = result.confidence
                     
                     Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%, threshold: ${(PREDICTION_THRESHOLD * 100).toInt()}%)")

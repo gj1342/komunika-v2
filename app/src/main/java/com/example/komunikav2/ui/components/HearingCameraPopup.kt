@@ -168,7 +168,8 @@ fun HearingCameraPopup(
         when {
             selectedUser == null -> onPredictionChange("Select a user to start prediction")
             prediction.isNotBlank() -> {
-                onPredictionChange(prediction)
+                val cleanPrediction = prediction.replace("_", " ").replace("-", " ")
+                onPredictionChange(cleanPrediction)
                 // Send prediction to selected user
                 nearbyService.sendPredictionToUser(selectedUser.id, prediction)
             }

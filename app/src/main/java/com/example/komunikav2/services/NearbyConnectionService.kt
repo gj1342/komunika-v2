@@ -390,7 +390,7 @@ class NearbyConnectionService private constructor(private val context: Context) 
         val predictionMessage = PredictionMessage(
             type = "prediction",
             targetUserId = targetUserId,
-            prediction = prediction,
+            prediction = prediction.replace("_", " ").replace("-", " "),
             category = category
         )
         
