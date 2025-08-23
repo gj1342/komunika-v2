@@ -14,6 +14,8 @@ object TextToSpeechManager {
 		tts = TextToSpeech(context.applicationContext) { status ->
 			if (status == TextToSpeech.SUCCESS) {
 				tts?.language = locale
+				// Set slower speech rate for better understanding
+				tts?.setSpeechRate(0.7f) // 0.7 = 70% of normal speed (slower)
 				isInitialized = true
 				onReady?.let { it() }
 			}
@@ -26,6 +28,12 @@ object TextToSpeechManager {
 		// Replace underscores and hyphens with spaces for better speech
 		val cleanText = text.replace("_", " ").replace("-", " ")
 		tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, "tts_${System.currentTimeMillis()}")
+	}
+
+	fun setSpeechRate(rate: Float) {
+		if (isInitialized) {
+			tts?.setSpeechRate(rate)
+		}
 	}
 
 	fun stop() {
