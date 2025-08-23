@@ -23,7 +23,9 @@ object TextToSpeechManager {
 	fun speak(text: String) {
 		if (!isInitialized) return
 		tts?.stop()
-		tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "tts_${System.currentTimeMillis()}")
+		// Replace underscores and hyphens with spaces for better speech
+		val cleanText = text.replace("_", " ").replace("-", " ")
+		tts?.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, "tts_${System.currentTimeMillis()}")
 	}
 
 	fun stop() {

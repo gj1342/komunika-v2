@@ -351,7 +351,7 @@ class NearbyConnectionService private constructor(private val context: Context) 
         
         val message = ChatMessage(
             id = UUID.randomUUID().toString(),
-            text = text,
+            text = text.replace("_", " ").replace("-", " "),
             senderId = currentUserProfile?.id ?: "",
             senderName = currentUserProfile?.name ?: "",
             senderAvatar = currentUserProfile?.avatar ?: "",
@@ -390,7 +390,7 @@ class NearbyConnectionService private constructor(private val context: Context) 
         val predictionMessage = PredictionMessage(
             type = "prediction",
             targetUserId = targetUserId,
-            prediction = prediction,
+            prediction = prediction.replace("_", " ").replace("-", " "),
             category = category
         )
         
