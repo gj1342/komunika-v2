@@ -42,7 +42,6 @@ import kotlinx.coroutines.delay
 fun SignLanguageRecognitionScreen(navController: NavController) {
     var prediction by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var currentSentence by remember { mutableStateOf("") }
     var predictionHistory by remember { mutableStateOf<List<String>>(emptyList()) }
     var isModelReady by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -66,15 +65,21 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
             }
             
             override fun onPrediction(prediction: String) {
-                // Update the current sentence from the service
-                currentSentence = handLandmarkerService.getCurrentSentence()
+                // Update prediction history from the service
                 predictionHistory = handLandmarkerService.getPredictionHistory()
                 
                 Log.d("SignLanguageRecognition", "New prediction: $prediction")
-                Log.d("SignLanguageRecognition", "Current sentence: $currentSentence")
                 Log.d("SignLanguageRecognition", "Prediction history: $predictionHistory")
             }
         })
+    }
+    
+    // Handle prediction updates from HandLandmarkerService
+    LaunchedEffect(Unit) {
+        handLandmarkerService.prediction.collect { newPrediction ->
+            prediction = newPrediction
+            Log.d("SignLanguageRecognition", "Prediction StateFlow updated: '$newPrediction'")
+        }
     }
     
     // All 18 vocabulary categories
@@ -100,14 +105,6 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
         VocabularyCategory(R.drawable.adjectives_and_adverbs, R.string.adjectives_adverbs, R.color.button_light_green, "adjectives_and_adverbs"),
         VocabularyCategory(R.drawable.alphabets, R.string.alphabets, R.color.button_light_teal_green, "alphabets")
     )
-    
-    // Handle prediction updates from HandLandmarkerService
-    LaunchedEffect(Unit) {
-        handLandmarkerService.prediction.collect { newPrediction ->
-            prediction = newPrediction
-            Log.d("SignLanguageRecognition", "Prediction StateFlow updated: '$newPrediction'")
-        }
-    }
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -232,7 +229,6 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                     item {
                         Text(
                             text = when {
-                                currentSentence.isNotBlank() -> currentSentence
                                 prediction.isNotBlank() -> prediction
                                 selectedCategory == null -> "Select a category to start recognition"
                                 isHandDetected -> "Analyzing..."
@@ -261,10 +257,6 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                             val newHistory = predictionHistory.dropLast(1)
                             predictionHistory = newHistory
                             
-                            // Rebuild the sentence
-                            val newSentence = newHistory.joinToString(" ")
-                            currentSentence = newSentence
-                            
                             // Update the service
                             handLandmarkerService.rebuildSentenceFromHistory(newHistory)
                         }
@@ -288,14 +280,14 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                 // Send Button
                 Button(
                     onClick = {
-                        if (currentSentence.isNotBlank()) {
+                        if (prediction.isNotBlank()) {
                             // Send the sentence to all connected devices
-                            nearbyService.sendMessage(currentSentence)
-                            Log.d("SignLanguageRecognition", "Sending sentence to all connected devices: $currentSentence")
+                            nearbyService.sendMessage(prediction)
+                            Log.d("SignLanguageRecognition", "Sending sentence to all connected devices: $prediction")
                             
                             // Clear the sentence after sending
                             handLandmarkerService.clearPrediction()
-                            currentSentence = ""
+                            prediction = ""
                             predictionHistory = emptyList()
                             
                             // Release hand landmarker service to stop prediction
@@ -309,7 +301,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                         containerColor = Color.Green
                     ),
-                    enabled = currentSentence.isNotBlank()
+                    enabled = prediction.isNotBlank()
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,

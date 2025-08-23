@@ -484,11 +484,12 @@ class HandLandmarkerService(
                             blockPredictionUntilMs = 0L
                         }
                     } else {
-                        // Low confidence - show but don't add to sentence
-                        _prediction.value = predictionText
+                        // Low confidence - show current sentence, not just the prediction
+                        val currentSentence = sentenceBuilder.toString().trim()
+                        _prediction.value = currentSentence
                         handLandmarkerListener?.onPrediction(predictionText)
                         
-                        Log.d("HandLandmarkerService", "Low confidence - showing but not adding: $predictionText")
+                        Log.d("HandLandmarkerService", "Low confidence - showing current sentence: $currentSentence")
                     }
                 } else {
                     Log.d("HandLandmarkerService", "No prediction result")
