@@ -115,7 +115,20 @@ fun HearingMultiPhoneChatScreen(navController: NavController) {
                         key = connectedUsers.size,
                         connectedUsers = connectedUsers,
                         selectedUser = selectedUserForPrediction,
-                        onUserClick = { user -> selectedUserForPrediction = user }
+                        onUserClick = { user -> 
+                            // Send notification to the previously selected user (if any) that they are no longer selected
+                            selectedUserForPrediction?.let { previousUser ->
+                                nearbyService.sendUserSelectionNotification(previousUser.id, false)
+                            }
+                            
+                            // Update the selected user
+                            selectedUserForPrediction = user
+                            
+                            // Send notification to the newly selected user
+                            user?.let { newUser ->
+                                nearbyService.sendUserSelectionNotification(newUser.id, true)
+                            }
+                        }
                     )
                 }
             )

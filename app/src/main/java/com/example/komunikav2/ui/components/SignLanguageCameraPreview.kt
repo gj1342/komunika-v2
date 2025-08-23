@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraFront
 import androidx.compose.material.icons.filled.CameraRear
@@ -34,7 +35,9 @@ import com.example.komunikav2.ui.components.HandLandmarkOverlay
 @Composable
 fun SignLanguageCameraPreview(
     modifier: Modifier = Modifier,
-    handLandmarkerService: com.example.komunikav2.services.HandLandmarkerService? = null
+    handLandmarkerService: com.example.komunikav2.services.HandLandmarkerService? = null,
+    isModelReady: Boolean = false,
+    selectedCategory: String? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -150,6 +153,77 @@ fun SignLanguageCameraPreview(
             )
             
 
+            
+            // Ready/Sign Indicator
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                when {
+                    selectedCategory == null -> {
+                        // No category selected
+                                                 Box(
+                             modifier = Modifier
+                                 .clip(RoundedCornerShape(8.dp))
+                                 .background(androidx.compose.ui.graphics.Color(0xFFFF9800).copy(alpha = 0.8f))
+                                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                         ) {
+                            Text(
+                                text = "SELECT CATEGORY",
+                                color = Color.White,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
+                    }
+                    !isModelReady -> {
+                        // Model loading
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Yellow.copy(alpha = 0.8f))
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "LOADING MODEL...",
+                                color = Color.Black,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
+                    }
+                    isHandDetected -> {
+                        // Hand detected - ready to sign
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Green.copy(alpha = 0.8f))
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "READY TO SIGN",
+                                color = Color.White,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
+                    }
+                    else -> {
+                        // Model ready but no hand detected
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Blue.copy(alpha = 0.8f))
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = "SHOW YOUR HANDS",
+                                color = Color.White,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
             
             // Camera switch button
             Box(

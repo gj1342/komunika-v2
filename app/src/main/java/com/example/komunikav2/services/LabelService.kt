@@ -23,6 +23,7 @@ class LabelService(private val context: Context) {
     fun getCategoryTitle(category: String): String {
         return when (category) {
             "alphabets" -> "ALPHABETS"
+            "colors" -> "COLORS"
             "greetings" -> "GREETINGS"
             "family" -> "FAMILY"
             "people" -> "PEOPLE"

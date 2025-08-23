@@ -244,9 +244,10 @@ class HandLandmarkerService(
             processLandmarksForPrediction(leftHand, rightHand)
         } else {
             _handBoundingBox.value = null
-            Log.d("HandLandmarkerService", "No hands detected - adding zero frame")
-            // Add zero frame when no hands detected (like Python reference)
-            processLandmarksForPrediction(null, null)
+            Log.d("HandLandmarkerService", "No hands detected - clearing buffer")
+            // Clear buffer when no hands detected to avoid mixed data
+            landmarkBuffer.clear()
+            isPredicting = false
         }
     }
     
@@ -454,7 +455,7 @@ class HandLandmarkerService(
                 }
 
                 if (result != null) {
-                    val predictionText = result.prediction
+                    val predictionText = result.prediction.replace("_", " ").replace("-", " ")
                     val confidence = result.confidence
                     
                     Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%, threshold: ${(PREDICTION_THRESHOLD * 100).toInt()}%)")
@@ -483,11 +484,12 @@ class HandLandmarkerService(
                             blockPredictionUntilMs = 0L
                         }
                     } else {
-                        // Low confidence - show but don't add to sentence
-                        _prediction.value = predictionText
+                        // Low confidence - show current sentence, not just the prediction
+                        val currentSentence = sentenceBuilder.toString().trim()
+                        _prediction.value = currentSentence
                         handLandmarkerListener?.onPrediction(predictionText)
                         
-                        Log.d("HandLandmarkerService", "Low confidence - showing but not adding: $predictionText")
+                        Log.d("HandLandmarkerService", "Low confidence - showing current sentence: $currentSentence")
                     }
                 } else {
                     Log.d("HandLandmarkerService", "No prediction result")

@@ -24,6 +24,10 @@ import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.ui.components.*
 import com.example.komunikav2.services.VideoCatalog
 import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -54,15 +58,53 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
     // Track currently selected category for visual indication
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     
+    // Track model ready and hand detection states
+    var isModelReady by remember { mutableStateOf(false) }
+    var isHandDetected by remember { mutableStateOf(false) }
+    
     // Listen for incoming predictions from hearing users
     val incomingPredictions by nearbyService.incomingPredictions.collectAsState()
+    
+    // Listen for user selection notifications
+    val userSelectionNotifications by nearbyService.userSelectionNotifications.collectAsState()
+    
+    // Track current selection state
+    var isCurrentlySelected by remember { mutableStateOf(false) }
+    var selectedByUserName by remember { mutableStateOf<String?>(null) }
     
     // Update prediction message when incoming predictions arrive
     LaunchedEffect(incomingPredictions) {
         incomingPredictions?.let { prediction ->
             predictionMessage = prediction.prediction
+            // When we receive a prediction, it means hands were detected
+            isHandDetected = true
         }
     }
+    
+    // Handle user selection notifications
+    LaunchedEffect(userSelectionNotifications) {
+        userSelectionNotifications?.let { notification ->
+            isCurrentlySelected = notification.selected
+            if (notification.selected) {
+                // Find the user who selected this user
+                val selectingUser = connectedUsers.find { it.id == notification.fromUserId }
+                selectedByUserName = selectingUser?.name
+            } else {
+                selectedByUserName = null
+            }
+        }
+    }
+    
+         // Simulate hand detection state changes for demo purposes
+     LaunchedEffect(Unit) {
+         while (true) {
+             delay(2000) // Check every 2 seconds
+             if (isModelReady && selectedCategory != null) {
+                 // Simulate hand detection (in real implementation, this would come from hearing users)
+                 isHandDetected = kotlin.random.Random.nextBoolean()
+             }
+         }
+     }
     
     DisposableEffect(Unit) {
         onDispose {
@@ -90,20 +132,16 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
                     nearbyService.resetForReconnection()
                     navController.popBackStack() 
                 },
-                backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
-                trailingContent = {
-                    MultiPhoneUserDropdown(
-                        key = connectedUsers.size, // Force recomposition when user count changes
-                        connectedUsers = connectedUsers,
-                        onUserClick = { user ->
-                            // TODO: Handle user selection
-                            println("Selected user: ${user?.name}")
-                        }
-                    )
-                }
+                backgroundColor = androidx.compose.ui.graphics.Color.Transparent
             )
             
             UserTypeIndicator(userType)
+            
+            // User Selection Notification
+            UserSelectionNotification(
+                isSelected = isCurrentlySelected,
+                selectedByUserName = selectedByUserName
+            )
             
             LazyColumn(
                 state = listState,
@@ -175,6 +213,19 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
                     nearbyService.sendPredictionPause(false)
                     // Update selected category for visual indication
                     selectedCategory = categoryKey
+                    // Reset model ready state and simulate loading
+                    isModelReady = false
+                    isHandDetected = false
+                    
+                                         // Simulate model loading delay
+                     CoroutineScope(Dispatchers.Main).launch {
+                         delay(1000) // 1 second delay
+                         if (selectedCategory == categoryKey) {
+                             isModelReady = true
+                             android.util.Log.d("DeafMultiPhoneChatScreen", "Model ready for category: $categoryKey")
+                         }
+                     }
+                    
                     // Note: Modal stays open, no navigation - just model loading
                     android.util.Log.d("DeafMultiPhoneChatScreen", "Category clicked: $categoryKey, sending to hearing users")
                 },
@@ -202,7 +253,9 @@ fun DeafMultiPhoneChatScreen(navController: NavController) {
                 onPredictionMessageChange = { message ->
                     predictionMessage = message
                 },
-                selectedCategory = selectedCategory
+                selectedCategory = selectedCategory,
+                isModelReady = isModelReady,
+                isHandDetected = isHandDetected
             )
         }
     }
