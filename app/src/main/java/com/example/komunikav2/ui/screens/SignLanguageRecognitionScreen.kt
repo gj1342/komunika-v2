@@ -31,6 +31,7 @@ import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.ui.components.*
 import com.example.komunikav2.services.HandLandmarkerService
 import com.example.komunikav2.services.NearbyConnectionService
+import com.example.komunikav2.services.SignLanguagePredictor
 import androidx.compose.runtime.collectAsState
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
@@ -198,6 +199,12 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                                             if (selectedCategory == category.categoryKey) {
                                                 isModelReady = true
                                                 Log.d("SignLanguageRecognition", "Model ready for category: $selectedCategory")
+                                                
+                                                // Configure optimizations for faster prediction
+                                                handLandmarkerService.setPredictionSpeed(HandLandmarkerService.PredictionSpeed.FAST)
+                                                handLandmarkerService.setInferenceOptimization(
+                                                    SignLanguagePredictor.InferenceOptimization.SPEED
+                                                )
                                             }
                                         }
                                     },
