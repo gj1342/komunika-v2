@@ -177,6 +177,16 @@ object VideoCatalog {
             "COLORS/white.mp4",
             "COLORS/yellow.mp4",
         ),
+        "pronouns" to listOf(
+            "PRONOUNS/he_she_him_her.mp4",
+            "PRONOUNS/me.mp4",
+            "PRONOUNS/that.mp4",
+            "PRONOUNS/they_them_those.mp4",
+            "PRONOUNS/this.mp4",
+            "PRONOUNS/us.mp4",
+            "PRONOUNS/we.mp4",
+            "PRONOUNS/you.mp4",
+        ),
         "alphabets" to ('a'..'z').map { "ALPHABETS/${it}.mp4" },
     )
 
@@ -247,6 +257,7 @@ object VideoCatalog {
             "food",
             "calendar",
             "colors",
+            "pronouns",
             "alphabets"
         ).forEach { key ->
             prioritized += (categoryToFiles[key] ?: emptyList())

@@ -34,6 +34,7 @@ class LabelService(private val context: Context) {
             "numbers20-100" -> "NUMBERS 20-100"
             "gender" -> "GENDER"
             "questions" -> "QUESTIONS"
+            "pronouns" -> "PRONOUNS"
             else -> category.uppercase()
         }
     }
