@@ -285,8 +285,12 @@ object VideoCatalog {
             "family" -> {
                 val normalizedPrediction = prediction.lowercase().trim()
                 when (normalizedPrediction) {
-                    "godfather_mother" -> "FAMILY/grandfather.mp4"
+                    "godfather_mother" -> "FAMILY/grandfather_1.mp4"
                     "grandchild" -> "FAMILY/grandchildren.mp4"
+                    "godfather" -> "FAMILY/grandfather_1.mp4"
+                    "godmother" -> "FAMILY/grandmother.mp4"
+                    "grandfather" -> "FAMILY/grandfather_1.mp4"
+                    "grandmother" -> "FAMILY/grandmother_1.mp4"
                     else -> {
                         val key = normalizedPrediction.replace(" ", "_")
                         phraseKeyToPath[key]
@@ -343,8 +347,12 @@ object VideoCatalog {
             "family" -> {
                 val normalizedLabel = label.lowercase().trim()
                 when (normalizedLabel) {
-                    "godfather_mother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather_1.mp4")
+                    "godfather_mother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
                     "grandchild" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandchildren.mp4")
+                    "godfather" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
+                    "godmother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandmother.mp4")
+                    "grandfather" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather_1.mp4")
+                    "grandmother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandmother_1.mp4")
                     else -> getUriForPhrase(label)
                 }
             }
@@ -486,10 +494,51 @@ object VideoCatalog {
                     out += Uri.parse(ASSET_PREFIX + "FAMILY/grandchildren.mp4")
                     "grandchild"
                 }
+                remaining.startsWith("godfather") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
+                    "godfather"
+                }
+                remaining.startsWith("godmother") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandmother.mp4")
+                    "godmother"
+                }
+                remaining.startsWith("grandfather") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandfather_1.mp4")
+                    "grandfather"
+                }
+                remaining.startsWith("grandmother") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandmother_1.mp4")
+                    "grandmother"
+                }
                 else -> null
             }
             if (familyMatch != null) {
                 remaining = remaining.removePrefix(familyMatch).trimStart('_')
+                continue
+            }
+            
+            // Special handling for pronouns
+            val pronounMatch = when {
+                remaining.startsWith("my") || remaining.startsWith("mine") || 
+                remaining.startsWith("i") -> {
+                    out += Uri.parse(ASSET_PREFIX + "PRONOUNS/me.mp4")
+                    if (remaining.startsWith("my")) "my" else if (remaining.startsWith("mine")) "mine" else "i"
+                }
+                remaining.startsWith("he") || remaining.startsWith("she") || 
+                remaining.startsWith("him") || remaining.startsWith("her") -> {
+                    out += Uri.parse(ASSET_PREFIX + "PRONOUNS/he_she_him_her.mp4")
+                    if (remaining.startsWith("he")) "he" else if (remaining.startsWith("she")) "she" 
+                    else if (remaining.startsWith("him")) "him" else "her"
+                }
+                remaining.startsWith("they") || remaining.startsWith("them") || 
+                remaining.startsWith("those") -> {
+                    out += Uri.parse(ASSET_PREFIX + "PRONOUNS/they_them_those.mp4")
+                    if (remaining.startsWith("they")) "they" else if (remaining.startsWith("them")) "them" else "those"
+                }
+                else -> null
+            }
+            if (pronounMatch != null) {
+                remaining = remaining.removePrefix(pronounMatch).trimStart('_')
                 continue
             }
             
