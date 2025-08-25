@@ -2,6 +2,8 @@ package com.example.komunikav2.services
 
 import android.content.Context
 import android.util.Log
+import android.os.Build
+import android.content.pm.ApplicationInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.tensorflow.lite.Interpreter
@@ -17,6 +19,14 @@ class SignLanguagePredictor(private val context: Context) {
     private var interpreter: Interpreter? = null
     private var currentModel: String? = null
     private var currentLabels: List<String> = emptyList()
+    private var inputTensorShape: IntArray? = null
+    private var outputTensorShape: IntArray? = null
+    private var inputBuffer: ByteBuffer? = null
+    private var outputBuffer: ByteBuffer? = null
+    private var useNnapiIfAvailable: Boolean = false
+    private val isDebug: Boolean by lazy {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
     
     companion object {
         private const val TAG = "SignLanguagePredictor"
@@ -37,12 +47,13 @@ class SignLanguagePredictor(private val context: Context) {
             "people" to "people.tflite",
             "places" to "places.tflite",
             "questions" to "questions.tflite",
-            "time" to "time.tflite"
+            "time" to "time.tflite",
+            "pronouns" to "pronouns.tflite"
         )
         
         private val AVAILABLE_CATEGORIES = setOf(
             "alphabets", "colors", "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
-            "people", "places", "questions", "time"
+            "people", "places", "questions", "time", "pronouns"
         )
         
         private val LABELS_MAPPING = mapOf(
@@ -56,7 +67,8 @@ class SignLanguagePredictor(private val context: Context) {
             "people" to "people_labels.txt",
             "places" to "places_labels.txt",
             "questions" to "questions_labels.txt",
-            "time" to "time_labels.txt"
+            "time" to "time_labels.txt",
+            "pronouns" to "pronouns_labels.txt"
         )
     }
     
@@ -102,12 +114,36 @@ class SignLanguagePredictor(private val context: Context) {
                 setUseXNNPACK(true)
             }
             
-            interpreter = Interpreter(modelBuffer, options)
+            interpreter = try {
+                Interpreter(modelBuffer, options)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to create interpreter with XNNPACK, trying without: ${e.message}")
+                val fallbackOptions = Interpreter.Options().apply {
+                    setNumThreads(4)
+                }
+                Interpreter(modelBuffer, fallbackOptions)
+            }
             currentLabels = labels
             currentModel = category
+            inputTensorShape = interpreter?.getInputTensor(0)?.shape()
+            outputTensorShape = interpreter?.getOutputTensor(0)?.shape()
+
+            val expectedInputSize = inputTensorShape?.fold(1) { acc, dim -> acc * dim } ?: 0
+            val expectedOutputSize = outputTensorShape?.fold(1) { acc, dim -> acc * dim } ?: 0
+
+            inputBuffer = ByteBuffer.allocateDirect(expectedInputSize * FLOAT_SIZE).apply {
+                order(ByteOrder.nativeOrder())
+            }
+            outputBuffer = ByteBuffer.allocateDirect(expectedOutputSize * FLOAT_SIZE).apply {
+                order(ByteOrder.nativeOrder())
+            }
             
-            Log.d(TAG, "Model loaded successfully for category: $category")
-            Log.d(TAG, "Labels loaded: ${labels.size} labels")
+            if (isDebug) {
+                Log.d(TAG, "Model loaded successfully for category: $category")
+                Log.d(TAG, "Labels loaded: ${labels.size} labels")
+                Log.d(TAG, "Input shape: ${inputTensorShape?.contentToString()}")
+                Log.d(TAG, "Output shape: ${outputTensorShape?.contentToString()}")
+            }
             
             true
         } catch (e: Exception) {
@@ -128,37 +164,41 @@ class SignLanguagePredictor(private val context: Context) {
                 return@withContext null
             }
             
-            Log.d(TAG, "Predicting with ${landmarks.size} frames, ${landmarks.firstOrNull()?.size ?: 0} landmarks per frame")
+            if (isDebug) {
+                Log.d(TAG, "Predicting with ${landmarks.size} frames, ${landmarks.firstOrNull()?.size ?: 0} landmarks per frame")
+            }
             
-            // Get the actual input tensor shape from the model
-            val inputTensor = interpreter.getInputTensor(0)
-            val inputShape = inputTensor.shape()
+            val inputShape = inputTensorShape ?: interpreter.getInputTensor(0).shape().also { inputTensorShape = it }
             val expectedInputSize = inputShape.fold(1) { acc, dim -> acc * dim }
             
-            Log.d(TAG, "Model input shape: ${inputShape.contentToString()}, expected size: $expectedInputSize")
-            Log.d(TAG, "Our data size: ${landmarks.size * (landmarks.firstOrNull()?.size ?: 0)}")
-            Log.d(TAG, "Landmarks frame count: ${landmarks.size}")
-            Log.d(TAG, "Landmarks per frame: ${landmarks.firstOrNull()?.size ?: 0}")
-            Log.d(TAG, "Total coordinates: ${landmarks.flatten().size}")
+            if (isDebug) {
+                Log.d(TAG, "Model input shape: ${inputShape.contentToString()}, expected size: $expectedInputSize")
+                Log.d(TAG, "Our data size: ${landmarks.size * (landmarks.firstOrNull()?.size ?: 0)}")
+                Log.d(TAG, "Landmarks frame count: ${landmarks.size}")
+                Log.d(TAG, "Landmarks per frame: ${landmarks.firstOrNull()?.size ?: 0}")
+                Log.d(TAG, "Total coordinates: ${landmarks.flatten().size}")
+            }
             
             val inputData = preprocessLandmarks(landmarks)
             
-            // Get the actual output tensor shape from the model
-            val outputTensor = interpreter.getOutputTensor(0)
-            val outputShape = outputTensor.shape()
+            val outputShape = outputTensorShape ?: interpreter.getOutputTensor(0).shape().also { outputTensorShape = it }
             val actualOutputSize = outputShape.fold(1) { acc, dim -> acc * dim }
             
-            Log.d(TAG, "Model output shape: ${outputShape.contentToString()}, size: $actualOutputSize")
-            Log.d(TAG, "Labels count: ${currentLabels.size}")
+            if (isDebug) {
+                Log.d(TAG, "Model output shape: ${outputShape.contentToString()}, size: $actualOutputSize")
+                Log.d(TAG, "Labels count: ${currentLabels.size}")
+            }
             
-            val outputBuffer = ByteBuffer.allocateDirect(actualOutputSize * FLOAT_SIZE)
-            outputBuffer.order(ByteOrder.nativeOrder())
+            val outBuffer = outputBuffer?.also { it.clear() } ?: ByteBuffer.allocateDirect(actualOutputSize * FLOAT_SIZE).apply {
+                order(ByteOrder.nativeOrder())
+                outputBuffer = this
+            }
             
-            interpreter.run(inputData, outputBuffer)
+            interpreter.run(inputData, outBuffer)
             
             val predictions = FloatArray(actualOutputSize)
-            outputBuffer.rewind()
-            outputBuffer.asFloatBuffer().get(predictions)
+            outBuffer.rewind()
+            outBuffer.asFloatBuffer().get(predictions)
             
             // Use the minimum of actual output size and labels size for safety
             val validPredictionCount = minOf(actualOutputSize, currentLabels.size)
@@ -166,12 +206,12 @@ class SignLanguagePredictor(private val context: Context) {
             val confidence = predictions[maxIndex]
             val prediction = currentLabels.getOrNull(maxIndex) ?: "Unknown"
             
-            Log.d(TAG, "Raw predictions (first 5): ${predictions.take(5).joinToString()}")
-            Log.d(TAG, "All predictions: ${predictions.joinToString()}")
-            Log.d(TAG, "Valid prediction count: $validPredictionCount")
-            Log.d(TAG, "Max confidence index: $maxIndex")
-            Log.d(TAG, "Prediction: $prediction (confidence: $confidence)")
-            Log.d(TAG, "Available labels: ${currentLabels.joinToString()}")
+            if (isDebug) {
+                Log.d(TAG, "Raw predictions (first 5): ${predictions.take(5).joinToString()}")
+                Log.d(TAG, "Valid prediction count: $validPredictionCount")
+                Log.d(TAG, "Max confidence index: $maxIndex")
+                Log.d(TAG, "Prediction: $prediction (confidence: $confidence)")
+            }
             
             PredictionResult(
                 prediction = prediction,
@@ -185,19 +225,21 @@ class SignLanguagePredictor(private val context: Context) {
     }
     
     private fun preprocessLandmarks(landmarks: List<List<Float>>): ByteBuffer {
-        val inputBuffer = ByteBuffer.allocateDirect(SEQUENCE_LENGTH * NUM_KEYPOINTS * FLOAT_SIZE)
-        inputBuffer.order(ByteOrder.nativeOrder())
+        val buf = inputBuffer?.also { it.clear() } ?: ByteBuffer.allocateDirect(SEQUENCE_LENGTH * NUM_KEYPOINTS * FLOAT_SIZE).apply {
+            order(ByteOrder.nativeOrder())
+            inputBuffer = this
+        }
         
         val paddedLandmarks = padOrTruncateSequence(landmarks)
         
         for (frame in paddedLandmarks) {
             for (coordinate in frame) {
-                inputBuffer.putFloat(coordinate)
+                buf.putFloat(coordinate)
             }
         }
         
-        inputBuffer.rewind()
-        return inputBuffer
+        buf.rewind()
+        return buf
     }
     
     private fun padOrTruncateSequence(landmarks: List<List<Float>>): List<List<Float>> {
@@ -261,5 +303,28 @@ class SignLanguagePredictor(private val context: Context) {
     
     fun isCategoryAvailable(category: String): Boolean {
         return AVAILABLE_CATEGORIES.contains(category)
+    }
+
+    fun setUseNnapiIfAvailable(enabled: Boolean) {
+        useNnapiIfAvailable = enabled
+    }
+    
+    fun setInferenceOptimization(optimization: InferenceOptimization) {
+        when (optimization) {
+            InferenceOptimization.SPEED -> {
+                useNnapiIfAvailable = false
+            }
+            InferenceOptimization.BALANCED -> {
+                useNnapiIfAvailable = false
+            }
+            InferenceOptimization.ACCURACY -> {
+                useNnapiIfAvailable = false
+            }
+        }
+        Log.d(TAG, "Inference optimization set to: $optimization")
+    }
+    
+    enum class InferenceOptimization {
+        SPEED, BALANCED, ACCURACY
     }
 }

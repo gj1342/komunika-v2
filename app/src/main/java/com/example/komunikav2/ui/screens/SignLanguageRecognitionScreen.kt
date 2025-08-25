@@ -31,6 +31,7 @@ import com.example.komunikav2.navigation.Screen
 import com.example.komunikav2.ui.components.*
 import com.example.komunikav2.services.HandLandmarkerService
 import com.example.komunikav2.services.NearbyConnectionService
+import com.example.komunikav2.services.SignLanguagePredictor
 import androidx.compose.runtime.collectAsState
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
@@ -174,7 +175,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                             rowCategories.forEach { category ->
                                 val isModelAvailable = category.categoryKey in listOf(
                                     "alphabets", "colors", "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
-                                    "people", "places", "questions", "time"
+                                    "people", "places", "questions", "time", "pronouns"
                                 )
                                 val isSelected = selectedCategory == category.categoryKey
                                 
@@ -198,6 +199,12 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                                             if (selectedCategory == category.categoryKey) {
                                                 isModelReady = true
                                                 Log.d("SignLanguageRecognition", "Model ready for category: $selectedCategory")
+                                                
+                                                // Configure optimizations for faster prediction
+                                                handLandmarkerService.setPredictionSpeed(HandLandmarkerService.PredictionSpeed.FAST)
+                                                handLandmarkerService.setInferenceOptimization(
+                                                    SignLanguagePredictor.InferenceOptimization.SPEED
+                                                )
                                             }
                                         }
                                     },

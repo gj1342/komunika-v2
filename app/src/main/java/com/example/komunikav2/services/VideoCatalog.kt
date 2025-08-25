@@ -177,6 +177,16 @@ object VideoCatalog {
             "COLORS/white.mp4",
             "COLORS/yellow.mp4",
         ),
+        "pronouns" to listOf(
+            "PRONOUNS/he_she_him_her.mp4",
+            "PRONOUNS/me.mp4",
+            "PRONOUNS/that.mp4",
+            "PRONOUNS/they_them_those.mp4",
+            "PRONOUNS/this.mp4",
+            "PRONOUNS/us.mp4",
+            "PRONOUNS/we.mp4",
+            "PRONOUNS/you.mp4",
+        ),
         "alphabets" to ('a'..'z').map { "ALPHABETS/${it}.mp4" },
     )
 
@@ -231,6 +241,126 @@ object VideoCatalog {
         val base = fileName.removeSuffix(".mp4")
         return base.replace('_', ' ')
     }
+    
+    fun getVideoPathForPrediction(category: String, prediction: String): String? {
+        return when (category) {
+            "pronouns" -> {
+                val normalizedPrediction = prediction.lowercase().trim()
+                when (normalizedPrediction) {
+                    "he, she, him, her" -> "PRONOUNS/he_she_him_her.mp4"
+                    "me, i, my, mine" -> "PRONOUNS/me.mp4"
+                    "that" -> "PRONOUNS/that.mp4"
+                    "they, them, those" -> "PRONOUNS/they_them_those.mp4"
+                    "this" -> "PRONOUNS/this.mp4"
+                    "us" -> "PRONOUNS/us.mp4"
+                    "we" -> "PRONOUNS/we.mp4"
+                    "you" -> "PRONOUNS/you.mp4"
+                    else -> {
+                        // Fallback: try to match individual words
+                        when {
+                            normalizedPrediction.contains("me") || normalizedPrediction.contains("i") || 
+                            normalizedPrediction.contains("my") || normalizedPrediction.contains("mine") -> 
+                                "PRONOUNS/me.mp4"
+                            normalizedPrediction.contains("that") -> 
+                                "PRONOUNS/that.mp4"
+                            normalizedPrediction.contains("this") -> 
+                                "PRONOUNS/this.mp4"
+                            normalizedPrediction.contains("us") -> 
+                                "PRONOUNS/us.mp4"
+                            normalizedPrediction.contains("we") -> 
+                                "PRONOUNS/we.mp4"
+                            normalizedPrediction.contains("you") -> 
+                                "PRONOUNS/you.mp4"
+                            normalizedPrediction.contains("he") || normalizedPrediction.contains("she") || 
+                            normalizedPrediction.contains("him") || normalizedPrediction.contains("her") -> 
+                                "PRONOUNS/he_she_him_her.mp4"
+                            normalizedPrediction.contains("they") || normalizedPrediction.contains("them") || 
+                            normalizedPrediction.contains("those") -> 
+                                "PRONOUNS/they_them_those.mp4"
+                            else -> null
+                        }
+                    }
+                }
+            }
+            "family" -> {
+                val normalizedPrediction = prediction.lowercase().trim()
+                when (normalizedPrediction) {
+                    "godfather_mother" -> "FAMILY/grandfather_1.mp4"
+                    "grandchild" -> "FAMILY/grandchildren.mp4"
+                    "godfather" -> "FAMILY/grandfather_1.mp4"
+                    "godmother" -> "FAMILY/grandmother.mp4"
+                    "grandfather" -> "FAMILY/grandfather_1.mp4"
+                    "grandmother" -> "FAMILY/grandmother_1.mp4"
+                    else -> {
+                        val key = normalizedPrediction.replace(" ", "_")
+                        phraseKeyToPath[key]
+                    }
+                }
+            }
+            else -> {
+                val key = prediction.lowercase().replace(" ", "_")
+                phraseKeyToPath[key]
+            }
+        }
+    }
+    
+    fun getUriForVocabularyLabel(category: String, label: String): Uri? {
+        return when (category) {
+            "pronouns" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "he, she, him, her" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/he_she_him_her.mp4")
+                    "me, i, my, mine" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/me.mp4")
+                    "that" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/that.mp4")
+                    "they, them, those" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/they_them_those.mp4")
+                    "this" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/this.mp4")
+                    "us" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/us.mp4")
+                    "we" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/we.mp4")
+                    "you" -> Uri.parse(ASSET_PREFIX + "PRONOUNS/you.mp4")
+                    else -> {
+                        // Fallback: try to match individual words
+                        when {
+                            normalizedLabel.contains("me") || normalizedLabel.contains("i") || 
+                            normalizedLabel.contains("my") || normalizedLabel.contains("mine") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/me.mp4")
+                            normalizedLabel.contains("that") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/that.mp4")
+                            normalizedLabel.contains("this") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/this.mp4")
+                            normalizedLabel.contains("us") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/us.mp4")
+                            normalizedLabel.contains("we") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/we.mp4")
+                            normalizedLabel.contains("you") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/you.mp4")
+                            normalizedLabel.contains("he") || normalizedLabel.contains("she") || 
+                            normalizedLabel.contains("him") || normalizedLabel.contains("her") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/he_she_him_her.mp4")
+                            normalizedLabel.contains("they") || normalizedLabel.contains("them") || 
+                            normalizedLabel.contains("those") -> 
+                                Uri.parse(ASSET_PREFIX + "PRONOUNS/they_them_those.mp4")
+                            else -> null
+                        }
+                    }
+                }
+            }
+            "family" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "godfather_mother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
+                    "grandchild" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandchildren.mp4")
+                    "godfather" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
+                    "godmother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandmother.mp4")
+                    "grandfather" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather_1.mp4")
+                    "grandmother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandmother_1.mp4")
+                    else -> getUriForPhrase(label)
+                }
+            }
+            else -> {
+                getUriForPhrase(label)
+            }
+        }
+    }
     private val prioritizedPaths: List<String> by lazy {
         val prioritized = mutableListOf<String>()
         prioritized += numbers1to10
@@ -247,6 +377,7 @@ object VideoCatalog {
             "food",
             "calendar",
             "colors",
+            "pronouns",
             "alphabets"
         ).forEach { key ->
             prioritized += (categoryToFiles[key] ?: emptyList())
@@ -352,6 +483,65 @@ object VideoCatalog {
                     continue
                 }
             }
+            
+            // Special handling for family phrases
+            val familyMatch = when {
+                remaining.startsWith("godfather_mother") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
+                    "godfather_mother"
+                }
+                remaining.startsWith("grandchild") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandchildren.mp4")
+                    "grandchild"
+                }
+                remaining.startsWith("godfather") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandfather.mp4")
+                    "godfather"
+                }
+                remaining.startsWith("godmother") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandmother.mp4")
+                    "godmother"
+                }
+                remaining.startsWith("grandfather") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandfather_1.mp4")
+                    "grandfather"
+                }
+                remaining.startsWith("grandmother") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FAMILY/grandmother_1.mp4")
+                    "grandmother"
+                }
+                else -> null
+            }
+            if (familyMatch != null) {
+                remaining = remaining.removePrefix(familyMatch).trimStart('_')
+                continue
+            }
+            
+            // Special handling for pronouns
+            val pronounMatch = when {
+                remaining.startsWith("my") || remaining.startsWith("mine") || 
+                remaining.startsWith("i") -> {
+                    out += Uri.parse(ASSET_PREFIX + "PRONOUNS/me.mp4")
+                    if (remaining.startsWith("my")) "my" else if (remaining.startsWith("mine")) "mine" else "i"
+                }
+                remaining.startsWith("he") || remaining.startsWith("she") || 
+                remaining.startsWith("him") || remaining.startsWith("her") -> {
+                    out += Uri.parse(ASSET_PREFIX + "PRONOUNS/he_she_him_her.mp4")
+                    if (remaining.startsWith("he")) "he" else if (remaining.startsWith("she")) "she" 
+                    else if (remaining.startsWith("him")) "him" else "her"
+                }
+                remaining.startsWith("they") || remaining.startsWith("them") || 
+                remaining.startsWith("those") -> {
+                    out += Uri.parse(ASSET_PREFIX + "PRONOUNS/they_them_those.mp4")
+                    if (remaining.startsWith("they")) "they" else if (remaining.startsWith("them")) "them" else "those"
+                }
+                else -> null
+            }
+            if (pronounMatch != null) {
+                remaining = remaining.removePrefix(pronounMatch).trimStart('_')
+                continue
+            }
+            
             var matched = false
             for (key in knownPhrasesSorted) {
                 if (remaining.startsWith(key)) {

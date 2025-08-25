@@ -27,6 +27,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import java.io.ByteArrayOutputStream
 import android.util.Log
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class HandLandmarkerService(
     private val context: Context,
@@ -54,12 +56,12 @@ class HandLandmarkerService(
     private var lastProcessTime = 0L
     private val minProcessInterval = 33L
     private var frameCounter = 0
-    private val slidingWindowStride = 3  // Process every 3rd frame like Python reference
-    private var landmarkBuffer: MutableList<List<Float>> = mutableListOf()
+    private var slidingWindowStride = 1
+    private var landmarkBuffer: ArrayDeque<List<Float>> = ArrayDeque()
     private var currentCategory: String? = null
     private var isPredicting = false
     private var lastPredictionTime = 0L
-    private val minPredictionInterval = 2000L // 2 seconds between predictions
+    private var minPredictionInterval = QUICK_PREDICTION_INTERVAL // 2 seconds between predictions
     private var predictionLockUntilMs: Long = 0L
     @Volatile private var suppressNextPrediction: Boolean = false
     private var predictionJob: Job? = null
@@ -70,10 +72,20 @@ class HandLandmarkerService(
     private val predictionHistory = mutableListOf<String>()
     private val sentenceBuilder = StringBuilder()
     private var handLandmarkerListener: LandmarkerListener? = null
+    private var analyzerExecutor: ExecutorService? = null
+    private var lastHandSeenAt = 0L
+    private var handAbsentClearDelayMs = 800L
+    private var lastPredictedClass: String? = null
+    private var emaConfidence = 0f
+    private var emaAlpha = 0.6f
+    private var stableClassCount = 0
+    private var requiredStableCount = 1
     
     companion object {
         private const val BUFFER_SIZE = 30
-        private const val PREDICTION_THRESHOLD = 0.7f  // Increased to match Python reference (70%)
+        private const val PREDICTION_THRESHOLD = 0.7f
+        private const val QUICK_PREDICTION_BUFFER_SIZE = 20
+        private const val QUICK_PREDICTION_INTERVAL = 800L
     }
     
     interface LandmarkerListener {
@@ -98,6 +110,7 @@ class HandLandmarkerService(
     init {
         setupHandLandmarker()
         signLanguagePredictor = SignLanguagePredictor(context)
+        analyzerExecutor = Executors.newSingleThreadExecutor()
     }
     
     fun setListener(listener: LandmarkerListener?) {
@@ -153,12 +166,12 @@ class HandLandmarkerService(
 
         // Suppress the next prediction updates for a short window while new frames still stream
         suppressNextPrediction = true
-        predictionLockUntilMs = SystemClock.uptimeMillis() + 2000L
+        predictionLockUntilMs = SystemClock.uptimeMillis() + 800L
 
         // Prevent the same word from being immediately re-added while the hand hasn't changed
         val lastRemoved = sentenceBuilder.toString().split(" ").lastOrNull { it.isNotBlank() }
         blockedPrediction = lastRemoved
-        blockPredictionUntilMs = SystemClock.uptimeMillis() + 3000L
+        blockPredictionUntilMs = SystemClock.uptimeMillis() + 1500L
         Log.d("HandLandmarkerService", "Blocked prediction set to: '${blockedPrediction}' until ${blockPredictionUntilMs}")
     }
     
@@ -244,10 +257,12 @@ class HandLandmarkerService(
             processLandmarksForPrediction(leftHand, rightHand)
         } else {
             _handBoundingBox.value = null
-            Log.d("HandLandmarkerService", "No hands detected - clearing buffer")
-            // Clear buffer when no hands detected to avoid mixed data
-            landmarkBuffer.clear()
-            isPredicting = false
+            if (lastHandSeenAt == 0L) lastHandSeenAt = SystemClock.uptimeMillis()
+            val since = SystemClock.uptimeMillis() - lastHandSeenAt
+            if (since > handAbsentClearDelayMs) {
+                landmarkBuffer.clear()
+                isPredicting = false
+            }
         }
     }
     
@@ -265,16 +280,17 @@ class HandLandmarkerService(
         val landmarkData = leftData + rightData
 
         landmarkBuffer.add(landmarkData)
-        Log.d("HandLandmarkerService", "Added landmark frame with ${landmarkData.size} coordinates. Buffer size: ${landmarkBuffer.size}/$BUFFER_SIZE")
+        Log.d("HandLandmarkerService", "Added landmark frame with ${landmarkData.size} coordinates. Buffer size: ${landmarkBuffer.size}/$QUICK_PREDICTION_BUFFER_SIZE")
 
         // Use sliding window approach like Python reference
-        if (landmarkBuffer.size > BUFFER_SIZE) {
-            landmarkBuffer.removeAt(0) // Remove oldest frame
+        if (landmarkBuffer.size > QUICK_PREDICTION_BUFFER_SIZE) {
+            landmarkBuffer.removeFirst()
         }
 
-        // Only make prediction when hands are actually detected in current frame (like Python reference)
         val hasHandsInCurrentFrame = leftHand != null || rightHand != null
-        if (landmarkBuffer.size >= kotlin.math.min(10, BUFFER_SIZE) && !isPredicting && hasHandsInCurrentFrame) {
+        if (hasHandsInCurrentFrame) lastHandSeenAt = SystemClock.uptimeMillis()
+        val withinGrace = SystemClock.uptimeMillis() - lastHandSeenAt <= handAbsentClearDelayMs
+        if (landmarkBuffer.size >= kotlin.math.min(8, QUICK_PREDICTION_BUFFER_SIZE) && !isPredicting && (hasHandsInCurrentFrame || withinGrace)) {
             val currentTime = SystemClock.uptimeMillis()
             if (currentTime - lastPredictionTime >= minPredictionInterval) {
                 Log.d("HandLandmarkerService", "Buffer ready and hands detected, triggering prediction")
@@ -285,7 +301,7 @@ class HandLandmarkerService(
                 val timeRemaining = minPredictionInterval - (currentTime - lastPredictionTime)
                 Log.d("HandLandmarkerService", "Prediction cooldown active, ${timeRemaining}ms remaining")
             }
-        } else if (!hasHandsInCurrentFrame) {
+        } else if (!hasHandsInCurrentFrame && !withinGrace) {
             Log.d("HandLandmarkerService", "No hands in current frame - skipping prediction")
         }
     }
@@ -320,13 +336,12 @@ class HandLandmarkerService(
     }
     
     fun createImageAnalysis(): ImageAnalysis {
+        val exec = analyzerExecutor ?: Executors.newSingleThreadExecutor().also { analyzerExecutor = it }
         return ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
             .also { imageAnalysis ->
-                imageAnalysis.setAnalyzer(
-                    java.util.concurrent.Executors.newSingleThreadExecutor()
-                ) { imageProxy ->
+                imageAnalysis.setAnalyzer(exec) { imageProxy ->
                     detectLiveStream(imageProxy, isFrontCamera)
                 }
             }
@@ -334,6 +349,35 @@ class HandLandmarkerService(
     
     fun setCameraType(isFrontCamera: Boolean) {
         this.isFrontCamera = isFrontCamera
+    }
+    
+    fun setPredictionSpeed(speed: PredictionSpeed) {
+        when (speed) {
+            PredictionSpeed.FAST -> {
+                minPredictionInterval = 600L
+                slidingWindowStride = 1
+                requiredStableCount = 1
+            }
+            PredictionSpeed.MEDIUM -> {
+                minPredictionInterval = 800L
+                slidingWindowStride = 1
+                requiredStableCount = 1
+            }
+            PredictionSpeed.SLOW -> {
+                minPredictionInterval = 1200L
+                slidingWindowStride = 2
+                requiredStableCount = 2
+            }
+        }
+        Log.d("HandLandmarkerService", "Prediction speed set to: $speed")
+    }
+    
+    fun setInferenceOptimization(optimization: SignLanguagePredictor.InferenceOptimization) {
+        signLanguagePredictor?.setInferenceOptimization(optimization)
+    }
+    
+    enum class PredictionSpeed {
+        FAST, MEDIUM, SLOW
     }
     
 
@@ -374,6 +418,9 @@ class HandLandmarkerService(
                     handLandmarkerListener?.onError("Model not available for $category", 2)
                     return@launch
                 }
+                
+                // Unload previous model first to avoid conflicts
+                signLanguagePredictor?.unloadModel()
                 
                 val success = signLanguagePredictor?.loadModel(category) ?: false
                 if (success) {
@@ -467,29 +514,36 @@ class HandLandmarkerService(
                         return@launch
                     }
                     
-                    if (confidence >= PREDICTION_THRESHOLD) {
-                        // High confidence - add to sentence
-                        predictionHistory.add(predictionText)
-                        sentenceBuilder.append(" $predictionText ")
+                    if (lastPredictedClass == null || !predictionText.equals(lastPredictedClass, ignoreCase = true)) {
+                        lastPredictedClass = predictionText
+                        emaConfidence = confidence
+                        stableClassCount = 1
+                    } else {
+                        emaConfidence = emaAlpha * confidence + (1 - emaAlpha) * emaConfidence
+                        stableClassCount += 1
+                    }
+
+                    val accept = emaConfidence >= PREDICTION_THRESHOLD && stableClassCount >= requiredStableCount
+                    if (accept) {
+                        val lastWord = predictionHistory.lastOrNull()
+                        val isDuplicate = lastWord != null && lastWord.equals(predictionText, ignoreCase = true)
+                        if (currentCategory == "alphabets" || !isDuplicate) {
+                            predictionHistory.add(predictionText)
+                            sentenceBuilder.append(" $predictionText ")
+                        }
                         val currentSentence = sentenceBuilder.toString().trim()
-                        
                         _prediction.value = currentSentence
                         handLandmarkerListener?.onPrediction(predictionText)
-                        
-                        Log.d("HandLandmarkerService", "High confidence - added to sentence: $predictionText")
-                        Log.d("HandLandmarkerService", "Current sentence: $currentSentence")
-                        // Clear block if a different word was added
                         if (!predictionText.equals(blockedPrediction, ignoreCase = true)) {
                             blockedPrediction = null
                             blockPredictionUntilMs = 0L
                         }
+                        lastPredictedClass = null
+                        stableClassCount = 0
+                        emaConfidence = 0f
                     } else {
-                        // Low confidence - show current sentence, not just the prediction
-                        val currentSentence = sentenceBuilder.toString().trim()
-                        _prediction.value = currentSentence
+                        _prediction.value = sentenceBuilder.toString().trim()
                         handLandmarkerListener?.onPrediction(predictionText)
-                        
-                        Log.d("HandLandmarkerService", "Low confidence - showing current sentence: $currentSentence")
                     }
                 } else {
                     Log.d("HandLandmarkerService", "No prediction result")
@@ -644,6 +698,10 @@ class HandLandmarkerService(
             landmarkBuffer.clear()
             isPredicting = false
             Log.d("HandLandmarkerService", "Service released successfully")
+            try {
+                analyzerExecutor?.shutdownNow()
+            } catch (_: Exception) {}
+            analyzerExecutor = null
         } catch (e: Exception) {
             Log.e("HandLandmarkerService", "Error during release", e)
         }

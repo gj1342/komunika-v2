@@ -50,7 +50,7 @@ fun CategoryFSLVideoScreen(
 
     LaunchedEffect(selectedLabel) {
         videoUris = selectedLabel?.let { label ->
-            VideoCatalog.getUriForPhrase(label)?.let { listOf(it) } ?: emptyList()
+            VideoCatalog.getUriForVocabularyLabel(category, label)?.let { listOf(it) } ?: emptyList()
         } ?: emptyList()
     }
     
