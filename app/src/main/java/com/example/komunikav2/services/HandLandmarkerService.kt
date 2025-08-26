@@ -61,12 +61,11 @@ class HandLandmarkerService(
     private var currentCategory: String? = null
     private var isPredicting = false
     private var lastPredictionTime = 0L
-    private var minPredictionInterval = QUICK_PREDICTION_INTERVAL // 2 seconds between predictions
+    private var minPredictionInterval = TARGET_GESTURE_DURATION_MS // Initialize with 1-second target
     private var predictionLockUntilMs: Long = 0L
     @Volatile private var suppressNextPrediction: Boolean = false
     private var predictionJob: Job? = null
-    private var blockedPrediction: String? = null
-    private var blockPredictionUntilMs: Long = 0L
+
     
     // Sentence building components
     private val predictionHistory = mutableListOf<String>()
@@ -74,18 +73,32 @@ class HandLandmarkerService(
     private var handLandmarkerListener: LandmarkerListener? = null
     private var analyzerExecutor: ExecutorService? = null
     private var lastHandSeenAt = 0L
-    private var handAbsentClearDelayMs = 800L
+    private var handAbsentClearDelayMs = HAND_DETECTION_GRACE_PERIOD_MS
     private var lastPredictedClass: String? = null
     private var emaConfidence = 0f
     private var emaAlpha = 0.6f
     private var stableClassCount = 0
     private var requiredStableCount = 1
     
+    // 1-second optimization variables
+    private var gestureStartTime = 0L
+    private var lastGesturePredictionTime = 0L
+    private var isGestureInProgress = false
+    private var consecutiveHandAbsenceCount = 0
+    private var maxConsecutiveHandAbsence = 3
+    
     companion object {
         private const val BUFFER_SIZE = 30
         private const val PREDICTION_THRESHOLD = 0.7f
         private const val QUICK_PREDICTION_BUFFER_SIZE = 20
         private const val QUICK_PREDICTION_INTERVAL = 800L
+        
+        // 1-second optimization constants
+        private const val TARGET_GESTURE_DURATION_MS = 1000L
+        private const val MIN_GESTURE_DURATION_MS = 800L
+        private const val MAX_GESTURE_DURATION_MS = 1500L
+        private const val HAND_DETECTION_GRACE_PERIOD_MS = 500L
+        private const val MAX_PREDICTION_DELAY_MS = 2000L
     }
     
     interface LandmarkerListener {
@@ -166,13 +179,9 @@ class HandLandmarkerService(
 
         // Suppress the next prediction updates for a short window while new frames still stream
         suppressNextPrediction = true
-        predictionLockUntilMs = SystemClock.uptimeMillis() + 800L
+                        predictionLockUntilMs = SystemClock.uptimeMillis() + 1200L
 
-        // Prevent the same word from being immediately re-added while the hand hasn't changed
-        val lastRemoved = sentenceBuilder.toString().split(" ").lastOrNull { it.isNotBlank() }
-        blockedPrediction = lastRemoved
-        blockPredictionUntilMs = SystemClock.uptimeMillis() + 1500L
-        Log.d("HandLandmarkerService", "Blocked prediction set to: '${blockedPrediction}' until ${blockPredictionUntilMs}")
+
     }
     
     fun getCurrentSentence(): String {
@@ -259,9 +268,13 @@ class HandLandmarkerService(
             _handBoundingBox.value = null
             if (lastHandSeenAt == 0L) lastHandSeenAt = SystemClock.uptimeMillis()
             val since = SystemClock.uptimeMillis() - lastHandSeenAt
-            if (since > handAbsentClearDelayMs) {
+            
+            // More graceful buffer clearing - only clear if hands absent for extended period
+            if (since > handAbsentClearDelayMs * 2) {
                 landmarkBuffer.clear()
                 isPredicting = false
+                isGestureInProgress = false
+                Log.d("HandLandmarkerService", "Extended hand absence, cleared buffer")
             }
         }
     }
@@ -288,24 +301,91 @@ class HandLandmarkerService(
         }
 
         val hasHandsInCurrentFrame = leftHand != null || rightHand != null
-        if (hasHandsInCurrentFrame) lastHandSeenAt = SystemClock.uptimeMillis()
-        val withinGrace = SystemClock.uptimeMillis() - lastHandSeenAt <= handAbsentClearDelayMs
-        if (landmarkBuffer.size >= kotlin.math.min(8, QUICK_PREDICTION_BUFFER_SIZE) && !isPredicting && (hasHandsInCurrentFrame || withinGrace)) {
-            val currentTime = SystemClock.uptimeMillis()
-            if (currentTime - lastPredictionTime >= minPredictionInterval) {
-                Log.d("HandLandmarkerService", "Buffer ready and hands detected, triggering prediction")
-                lastPredictionTime = currentTime
-                makePrediction()
-                // Don't clear buffer - keep sliding window
-            } else {
-                val timeRemaining = minPredictionInterval - (currentTime - lastPredictionTime)
-                Log.d("HandLandmarkerService", "Prediction cooldown active, ${timeRemaining}ms remaining")
+        val currentTime = SystemClock.uptimeMillis()
+        
+        // Update hand detection tracking
+        if (hasHandsInCurrentFrame) {
+            lastHandSeenAt = currentTime
+            consecutiveHandAbsenceCount = 0
+            
+            // Start gesture timing if not already started
+            if (!isGestureInProgress) {
+                gestureStartTime = currentTime
+                isGestureInProgress = true
+                Log.d("HandLandmarkerService", "Gesture started at $currentTime")
             }
-        } else if (!hasHandsInCurrentFrame && !withinGrace) {
-            Log.d("HandLandmarkerService", "No hands in current frame - skipping prediction")
+        } else {
+            consecutiveHandAbsenceCount++
+        }
+        
+        // Check if we should trigger prediction (1-second optimized logic)
+        val shouldPredict = shouldTriggerPrediction(currentTime, hasHandsInCurrentFrame)
+        
+        // Debug logging
+        Log.d("HandLandmarkerService", "Buffer: ${landmarkBuffer.size} frames, Hands: $hasHandsInCurrentFrame, Gesture: $isGestureInProgress, ShouldPredict: $shouldPredict")
+        
+        if (shouldPredict) {
+            Log.d("HandLandmarkerService", "1-second optimized prediction triggered")
+            lastPredictionTime = currentTime
+            lastGesturePredictionTime = currentTime
+            isGestureInProgress = false
+            makePrediction()
         }
     }
 
+    private fun shouldTriggerPrediction(currentTime: Long, hasHandsInCurrentFrame: Boolean): Boolean {
+        // Don't predict if already predicting
+        if (isPredicting) return false
+        
+        // Don't predict if buffer is too small (reduced requirement for faster response)
+        if (landmarkBuffer.size < 5) return false
+        
+        // Check if we have enough data for 1-second models (reduced minimum for faster response)
+        val bufferDuration = estimateBufferDuration()
+        if (bufferDuration < 500) return false  // Reduced from 800ms to 500ms
+        
+        // Calculate time since last prediction
+        val timeSinceLastPrediction = currentTime - lastPredictionTime
+        
+        // Case 1: Perfect 1-second gesture (hands detected throughout)
+        if (isGestureInProgress && hasHandsInCurrentFrame) {
+            val gestureDuration = currentTime - gestureStartTime
+            if (gestureDuration >= TARGET_GESTURE_DURATION_MS) {
+                Log.d("HandLandmarkerService", "Perfect 1-second gesture detected (${gestureDuration}ms)")
+                return true
+            }
+        }
+        
+        // Case 2: Hands briefly missed but we have enough data
+        val withinGrace = currentTime - lastHandSeenAt <= HAND_DETECTION_GRACE_PERIOD_MS
+        if (withinGrace && bufferDuration >= 800 && timeSinceLastPrediction >= minPredictionInterval) {
+            Log.d("HandLandmarkerService", "Hands briefly missed but sufficient data available (${bufferDuration}ms)")
+            return true
+        }
+        
+        // Case 3: Force prediction if too much time has passed (prevent long delays)
+        val maxDelayReached = currentTime - lastGesturePredictionTime >= MAX_PREDICTION_DELAY_MS
+        if (maxDelayReached && bufferDuration >= 500) {
+            Log.d("HandLandmarkerService", "Max delay reached, forcing prediction (${bufferDuration}ms)")
+            return true
+        }
+        
+        // Case 4: Buffer overflow protection (too much data)
+        if (bufferDuration >= MAX_GESTURE_DURATION_MS && timeSinceLastPrediction >= minPredictionInterval) {
+            Log.d("HandLandmarkerService", "Buffer overflow protection, predicting (${bufferDuration}ms)")
+            return true
+        }
+        
+        return false
+    }
+    
+    private fun estimateBufferDuration(): Long {
+        // Estimate how much time the buffer represents
+        // Assuming ~30fps, each frame is ~33ms
+        val estimatedFrameTime = 33L
+        return landmarkBuffer.size * estimatedFrameTime
+    }
+    
     private fun calculateBoundingBox(
         result: HandLandmarkerResult,
         imageWidth: Int,
@@ -354,22 +434,22 @@ class HandLandmarkerService(
     fun setPredictionSpeed(speed: PredictionSpeed) {
         when (speed) {
             PredictionSpeed.FAST -> {
-                minPredictionInterval = 600L
+                minPredictionInterval = TARGET_GESTURE_DURATION_MS
                 slidingWindowStride = 1
                 requiredStableCount = 1
             }
             PredictionSpeed.MEDIUM -> {
-                minPredictionInterval = 800L
+                minPredictionInterval = TARGET_GESTURE_DURATION_MS
                 slidingWindowStride = 1
-                requiredStableCount = 1
+                requiredStableCount = 2
             }
             PredictionSpeed.SLOW -> {
-                minPredictionInterval = 1200L
+                minPredictionInterval = TARGET_GESTURE_DURATION_MS
                 slidingWindowStride = 2
                 requiredStableCount = 2
             }
         }
-        Log.d("HandLandmarkerService", "Prediction speed set to: $speed")
+        Log.d("HandLandmarkerService", "Prediction speed set to: $speed (1-second optimized)")
     }
     
     fun setInferenceOptimization(optimization: SignLanguagePredictor.InferenceOptimization) {
@@ -396,7 +476,19 @@ class HandLandmarkerService(
                 return
             }
             
-            landmarker.detectAsync(mpImage, frameTime)
+            // Check if service is released
+            if (isReleased) {
+                Log.w("HandLandmarkerService", "Service is released, skipping detection")
+                return
+            }
+            
+            // Validate MPImage before passing to MediaPipe
+            try {
+                landmarker.detectAsync(mpImage, frameTime)
+            } catch (e: Exception) {
+                Log.e("HandLandmarkerService", "MediaPipe detection failed", e)
+                // Don't crash the app, just log the error
+            }
         } catch (e: Exception) {
             Log.e("HandLandmarkerService", "Error in detectAsync", e)
         }
@@ -507,12 +599,7 @@ class HandLandmarkerService(
                     
                     Log.d("HandLandmarkerService", "Prediction: $predictionText (confidence: ${(confidence * 100).toInt()}%, threshold: ${(PREDICTION_THRESHOLD * 100).toInt()}%)")
 
-                    val now2 = SystemClock.uptimeMillis()
-                    if (blockedPrediction != null && now2 < blockPredictionUntilMs && predictionText.equals(blockedPrediction, ignoreCase = true)) {
-                        Log.d("HandLandmarkerService", "Prediction '${predictionText}' blocked temporarily after delete")
-                        _prediction.value = sentenceBuilder.toString().trim()
-                        return@launch
-                    }
+
                     
                     if (lastPredictedClass == null || !predictionText.equals(lastPredictedClass, ignoreCase = true)) {
                         lastPredictedClass = predictionText
@@ -525,19 +612,13 @@ class HandLandmarkerService(
 
                     val accept = emaConfidence >= PREDICTION_THRESHOLD && stableClassCount >= requiredStableCount
                     if (accept) {
-                        val lastWord = predictionHistory.lastOrNull()
-                        val isDuplicate = lastWord != null && lastWord.equals(predictionText, ignoreCase = true)
-                        if (currentCategory == "alphabets" || !isDuplicate) {
-                            predictionHistory.add(predictionText)
-                            sentenceBuilder.append(" $predictionText ")
-                        }
+
+                        predictionHistory.add(predictionText)
+                        sentenceBuilder.append(" $predictionText ")
                         val currentSentence = sentenceBuilder.toString().trim()
                         _prediction.value = currentSentence
                         handLandmarkerListener?.onPrediction(predictionText)
-                        if (!predictionText.equals(blockedPrediction, ignoreCase = true)) {
-                            blockedPrediction = null
-                            blockPredictionUntilMs = 0L
-                        }
+
                         lastPredictedClass = null
                         stableClassCount = 0
                         emaConfidence = 0f
@@ -583,8 +664,13 @@ class HandLandmarkerService(
         
         try {
             // Check if service is released or HandLandmarker is unavailable
-            if (isReleased || handLandmarker == null) {
-                Log.w("HandLandmarkerService", "Service released or HandLandmarker null, skipping frame")
+            if (isReleased) {
+                Log.w("HandLandmarkerService", "Service is released, skipping frame")
+                return
+            }
+            
+            if (handLandmarker == null) {
+                Log.w("HandLandmarkerService", "HandLandmarker is null, skipping frame")
                 return
             }
             
@@ -655,11 +741,21 @@ class HandLandmarkerService(
                     postScale(-1f, 1f)
                 }
             }
-            val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            
+            val rotatedBitmap = try {
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            } catch (e: Exception) {
+                Log.e("HandLandmarkerService", "Error creating rotated bitmap", e)
+                bitmap  // Use original bitmap if rotation fails
+            }
             
             // Clean up original bitmap if different from rotated
             if (rotatedBitmap != bitmap) {
-                bitmap.recycle()
+                try {
+                    bitmap.recycle()
+                } catch (e: Exception) {
+                    Log.w("HandLandmarkerService", "Error recycling original bitmap", e)
+                }
             }
             
             // Validate rotated bitmap
@@ -669,11 +765,18 @@ class HandLandmarkerService(
             }
             
             try {
-            val mpImage = BitmapImageBuilder(rotatedBitmap).build()
+                val mpImage = BitmapImageBuilder(rotatedBitmap).build()
                 detectAsync(mpImage, currentTime)
+            } catch (e: Exception) {
+                Log.e("HandLandmarkerService", "Error creating MPImage or detecting", e)
+                // Continue processing without crashing
             } finally {
                 // Clean up bitmap after creating MPImage
-                rotatedBitmap.recycle()
+                try {
+                    rotatedBitmap.recycle()
+                } catch (e: Exception) {
+                    Log.w("HandLandmarkerService", "Error recycling bitmap", e)
+                }
             }
 
         } catch (e: Exception) {
