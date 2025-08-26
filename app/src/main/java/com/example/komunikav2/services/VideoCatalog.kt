@@ -297,6 +297,16 @@ object VideoCatalog {
                     }
                 }
             }
+            "gender" -> {
+                val normalizedPrediction = prediction.lowercase().trim()
+                when (normalizedPrediction) {
+                    "hard-of-hearing" -> "GENDER/hard_of_hearing.mp4"
+                    else -> {
+                        val key = normalizedPrediction.replace(" ", "_")
+                        phraseKeyToPath[key]
+                    }
+                }
+            }
             else -> {
                 val key = prediction.lowercase().replace(" ", "_")
                 phraseKeyToPath[key]
@@ -353,6 +363,13 @@ object VideoCatalog {
                     "godmother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandmother.mp4")
                     "grandfather" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandfather_1.mp4")
                     "grandmother" -> Uri.parse(ASSET_PREFIX + "FAMILY/grandmother_1.mp4")
+                    else -> getUriForPhrase(label)
+                }
+            }
+            "gender" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "hard-of-hearing" -> Uri.parse(ASSET_PREFIX + "GENDER/hard_of_hearing.mp4")
                     else -> getUriForPhrase(label)
                 }
             }
@@ -514,6 +531,19 @@ object VideoCatalog {
             }
             if (familyMatch != null) {
                 remaining = remaining.removePrefix(familyMatch).trimStart('_')
+                continue
+            }
+            
+            // Special handling for gender phrases
+            val genderMatch = when {
+                remaining.startsWith("hard-of-hearing") -> {
+                    out += Uri.parse(ASSET_PREFIX + "GENDER/hard_of_hearing.mp4")
+                    "hard-of-hearing"
+                }
+                else -> null
+            }
+            if (genderMatch != null) {
+                remaining = remaining.removePrefix(genderMatch).trimStart('_')
                 continue
             }
             
