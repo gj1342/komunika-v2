@@ -81,8 +81,8 @@ fun VocabularyScreen(navController: NavController) {
                     } else {
                         scope.launch {
                             val all = listOf(
-                                "greetings", "questions", "gender", "survival", "calendar", "time",
-                                "people", "places", "family", "food", "colors", "pronouns", "verbs",
+                                "greetings", "questions", "gender", "survival", "facial_expressions", "calendar", "time",
+                                "people", "places", "family", "food", "colors", "pronouns", "verbs", "money_matters",
                                 "adjectives_and_adverbs", "alphabets", "numbers1-10", "numbers11-19", "numbers20-100"
                             )
                             val results = mutableListOf<Pair<String, String>>()

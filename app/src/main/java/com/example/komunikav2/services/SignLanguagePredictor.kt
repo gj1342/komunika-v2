@@ -48,12 +48,16 @@ class SignLanguagePredictor(private val context: Context) {
             "places" to "places.tflite",
             "questions" to "questions.tflite",
             "time" to "time.tflite",
-            "pronouns" to "pronouns.tflite"
+            "pronouns" to "pronouns.tflite",
+            "survival" to "survival.tflite",
+            "verbs" to "verbs.tflite",
+            "facial_expressions" to "facial_expression.tflite",
+            "money_matters" to "money_matters.tflite"
         )
         
         private val AVAILABLE_CATEGORIES = setOf(
             "alphabets", "colors", "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
-            "people", "places", "questions", "time", "pronouns"
+            "people", "places", "questions", "time", "pronouns", "survival", "verbs", "facial_expressions", "money_matters"
         )
         
         private val LABELS_MAPPING = mapOf(
@@ -68,7 +72,11 @@ class SignLanguagePredictor(private val context: Context) {
             "places" to "places_labels.txt",
             "questions" to "questions_labels.txt",
             "time" to "time_labels.txt",
-            "pronouns" to "pronouns_labels.txt"
+            "pronouns" to "pronouns_labels.txt",
+            "survival" to "survival_labels.txt",
+            "verbs" to "verbs_labels.txt",
+            "facial_expressions" to "facial_expression_labels.txt",
+            "money_matters" to "money_matters_labels.txt"
         )
     }
     
