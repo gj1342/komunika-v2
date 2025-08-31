@@ -7,6 +7,17 @@ object VideoCatalog {
     private const val ASSET_PREFIX = "asset:///videos/"
 
     private val categoryToFiles: Map<String, List<String>> = mapOf(
+        "greetings" to listOf(
+            "GREETINGS/fine.mp4",
+            "GREETINGS/good_afternoon.mp4",
+            "GREETINGS/good_evening.mp4",
+            "GREETINGS/good_morning.mp4",
+            "GREETINGS/good_night.mp4",
+            "GREETINGS/hello.mp4",
+            "GREETINGS/sorry.mp4",
+            "GREETINGS/thank_you.mp4",
+            "GREETINGS/welcome.mp4",
+        ),
         "questions" to listOf(
             "WH-QUESTIONS/how.mp4",
             "WH-QUESTIONS/how_many.mp4",
@@ -251,6 +262,43 @@ object VideoCatalog {
             "FACIAL EXPRESSIONS/surprised.mp4",
             "FACIAL EXPRESSIONS/weak.mp4",
         ),
+        "adjectives_and_adverbs" to listOf(
+            "ADJECTIVES & ADVERBS/bad.mp4",
+            "ADJECTIVES & ADVERBS/beautiful.mp4",
+            "ADJECTIVES & ADVERBS/boastful.mp4",
+            "ADJECTIVES & ADVERBS/difficult.mp4",
+            "ADJECTIVES & ADVERBS/dry.mp4",
+            "ADJECTIVES & ADVERBS/easy.mp4",
+            "ADJECTIVES & ADVERBS/fast.mp4",
+            "ADJECTIVES & ADVERBS/fat.mp4",
+            "ADJECTIVES & ADVERBS/full.mp4",
+            "ADJECTIVES & ADVERBS/good.mp4",
+            "ADJECTIVES & ADVERBS/handsome.mp4",
+            "ADJECTIVES & ADVERBS/heavy.mp4",
+            "ADJECTIVES & ADVERBS/high.mp4",
+            "ADJECTIVES & ADVERBS/honest.mp4",
+            "ADJECTIVES & ADVERBS/humble.mp4",
+            "ADJECTIVES & ADVERBS/hungry.mp4",
+            "ADJECTIVES & ADVERBS/industrious.mp4",
+            "ADJECTIVES & ADVERBS/lazy.mp4",
+            "ADJECTIVES & ADVERBS/liar.mp4",
+            "ADJECTIVES & ADVERBS/light.mp4",
+            "ADJECTIVES & ADVERBS/low.mp4",
+            "ADJECTIVES & ADVERBS/new.mp4",
+            "ADJECTIVES & ADVERBS/nice.mp4",
+            "ADJECTIVES & ADVERBS/old.mp4",
+            "ADJECTIVES & ADVERBS/poor.mp4",
+            "ADJECTIVES & ADVERBS/rich.mp4",
+            "ADJECTIVES & ADVERBS/rough.mp4",
+            "ADJECTIVES & ADVERBS/short.mp4",
+            "ADJECTIVES & ADVERBS/smart.mp4",
+            "ADJECTIVES & ADVERBS/smooth.mp4",
+            "ADJECTIVES & ADVERBS/strong.mp4",
+            "ADJECTIVES & ADVERBS/tall.mp4",
+            "ADJECTIVES & ADVERBS/thin.mp4",
+            "ADJECTIVES & ADVERBS/ugly.mp4",
+            "ADJECTIVES & ADVERBS/wet.mp4",
+        ),
         "money_matters" to listOf(
             "MONEY MATTERS/atm.mp4",
             "MONEY MATTERS/bank.mp4",
@@ -458,6 +506,30 @@ object VideoCatalog {
                     else -> getUriForPhrase(label)
                 }
             }
+            "facial_expressions" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "afraid" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/afraid.mp4")
+                    "angry_mad" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/angry_mad.mp4")
+                    "complain" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/complain.mp4")
+                    "confident" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/confident.mp4")
+                    "cry" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/cry.mp4")
+                    "depressed" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/depressed.mp4")
+                    "disgusted" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/disgusted.mp4")
+                    "foolish" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/foolish.mp4")
+                    "frustrated" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/frustrated.mp4")
+                    "happy" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/happy.mp4")
+                    "hurt" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/hurt.mp4")
+                    "sad" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/sad.mp4")
+                    "scared" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/scared.mp4")
+                    "shocked" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/shocked.mp4")
+                    "shy" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/shy.mp4")
+                    "sick" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/sick.mp4")
+                    "surprised" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/surprised.mp4")
+                    "weak" -> Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/weak.mp4")
+                    else -> getUriForPhrase(label)
+                }
+            }
             else -> {
                 getUriForPhrase(label)
             }
@@ -469,6 +541,7 @@ object VideoCatalog {
         prioritized += numbers11to19
         prioritized += numbers20to100
         listOf(
+            "greetings",
             "survival",
             "questions",
             "time",
@@ -483,6 +556,7 @@ object VideoCatalog {
             "verbs",
             "facial_expressions",
             "money_matters",
+            "adjectives_and_adverbs",
             "alphabets"
         ).forEach { key ->
             prioritized += (categoryToFiles[key] ?: emptyList())

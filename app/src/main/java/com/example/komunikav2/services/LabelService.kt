@@ -8,7 +8,10 @@ class LabelService(private val context: Context) {
     
     suspend fun loadLabelsForCategory(category: String): List<String> = withContext(Dispatchers.IO) {
         try {
-            val fileName = "${category}_labels.txt"
+            val fileName = when (category) {
+                "facial_expressions" -> "facial_expression_labels.txt"
+                else -> "${category}_labels.txt"
+            }
             val inputStream = context.assets.open("labels/$fileName")
             val labels = inputStream.bufferedReader().use { reader ->
                 reader.readLines().filter { it.isNotBlank() }
@@ -35,6 +38,13 @@ class LabelService(private val context: Context) {
             "gender" -> "GENDER"
             "questions" -> "QUESTIONS"
             "pronouns" -> "PRONOUNS"
+            "facial_expressions" -> "FACIAL EXPRESSIONS"
+            "survival" -> "SURVIVAL"
+            "calendar" -> "CALENDAR"
+            "money_matters" -> "MONEY MATTERS"
+            "food" -> "FOOD"
+            "verbs" -> "VERBS"
+            "adjectives_and_adverbs" -> "ADJECTIVES & ADVERBS"
             else -> category.uppercase()
         }
     }
