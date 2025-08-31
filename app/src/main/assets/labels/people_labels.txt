@@ -1,4 +1,5 @@
 boyfriend
+friend
 girlfriend
 man
 old
