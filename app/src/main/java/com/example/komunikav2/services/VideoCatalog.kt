@@ -78,6 +78,7 @@ object VideoCatalog {
         ),
         "people" to listOf(
             "PEOPLE/boyfriend.mp4",
+            "PEOPLE/friend.mp4",
             "PEOPLE/girlfriend.mp4",
             "PEOPLE/man.mp4",
             "PEOPLE/old.mp4",
