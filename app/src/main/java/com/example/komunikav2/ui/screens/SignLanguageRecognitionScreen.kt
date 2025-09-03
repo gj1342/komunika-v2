@@ -174,7 +174,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                         ) {
                             rowCategories.forEach { category ->
                                 val isModelAvailable = category.categoryKey in listOf(
-                                    "alphabets", "colors", "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
+                                    "alphabets", "colors", "family", "gender", "greetings", "numbers1-10", "numbers11-19", "numbers20-100",
                                     "people", "places", "questions", "time", "pronouns"
                                 )
                                 val isSelected = selectedCategory == category.categoryKey
