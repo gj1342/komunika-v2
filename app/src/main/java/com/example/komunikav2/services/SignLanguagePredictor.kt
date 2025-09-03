@@ -41,6 +41,7 @@ class SignLanguagePredictor(private val context: Context) {
             "colors" to "colors.tflite",
             "family" to "family.tflite",
             "gender" to "gender.tflite", 
+            "greetings" to "greetings.tflite",
             "numbers1-10" to "1_to_10.tflite",
             "numbers11-19" to "11_to_19.tflite",
             "numbers20-100" to "20_to_100.tflite",
@@ -58,7 +59,7 @@ class SignLanguagePredictor(private val context: Context) {
         )
         
         private val AVAILABLE_CATEGORIES = setOf(
-            "alphabets", "colors", "family", "gender", "numbers1-10", "numbers11-19", "numbers20-100",
+            "alphabets", "colors", "family", "gender", "greetings", "numbers1-10", "numbers11-19", "numbers20-100",
             "people", "places", "questions", "time", "pronouns", "survival", "verbs", "facial_expressions", "money_matters", "food", "adjectives_and_adverbs"
         )
         
@@ -67,6 +68,7 @@ class SignLanguagePredictor(private val context: Context) {
             "colors" to "colors_labels.txt",
             "family" to "family_labels.txt",
             "gender" to "gender_labels.txt",
+            "greetings" to "greetings_labels.txt",
             "numbers1-10" to "numbers1-10_labels.txt",
             "numbers11-19" to "numbers11-19_labels.txt",
             "numbers20-100" to "numbers20-100_labels.txt",
