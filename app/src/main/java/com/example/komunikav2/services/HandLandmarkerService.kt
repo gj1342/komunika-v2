@@ -526,10 +526,10 @@ class HandLandmarkerService(
         }
     }
     
+    fun isCategoryAvailable(category: String): Boolean {
+        return signLanguagePredictor?.isCategoryAvailable(category) ?: false
+    }
 
-    
-
-    
     private fun normalizeHandLandmarks(handLandmarks: List<com.google.mediapipe.tasks.components.containers.NormalizedLandmark>): List<Float> {
         if (handLandmarks.isEmpty()) {
             return List(63) { 0.0f } // 21 landmarks * 3 coordinates

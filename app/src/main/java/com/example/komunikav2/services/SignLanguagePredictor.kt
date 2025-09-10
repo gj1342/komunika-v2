@@ -38,6 +38,7 @@ class SignLanguagePredictor(private val context: Context) {
         
         private val MODEL_MAPPING = mapOf(
             "alphabets" to "alphabets.tflite",
+            "calendar" to "calendar.tflite",
             "colors" to "colors.tflite",
             "family" to "family.tflite",
             "gender" to "gender.tflite", 
@@ -59,12 +60,13 @@ class SignLanguagePredictor(private val context: Context) {
         )
         
         private val AVAILABLE_CATEGORIES = setOf(
-            "alphabets", "colors", "family", "gender", "greetings", "numbers1-10", "numbers11-19", "numbers20-100",
+            "alphabets", "calendar", "colors", "family", "gender", "greetings", "numbers1-10", "numbers11-19", "numbers20-100",
             "people", "places", "questions", "time", "pronouns", "survival", "verbs", "facial_expressions", "money_matters", "food", "adjectives_and_adverbs"
         )
         
         private val LABELS_MAPPING = mapOf(
             "alphabets" to "alphabets_labels.txt",
+            "calendar" to "calendar_labels.txt",
             "colors" to "colors_labels.txt",
             "family" to "family_labels.txt",
             "gender" to "gender_labels.txt",

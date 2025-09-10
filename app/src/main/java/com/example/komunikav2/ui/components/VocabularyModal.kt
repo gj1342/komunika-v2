@@ -55,8 +55,7 @@ fun VocabularyModal(
         VocabularyCategory(R.drawable.colors, R.string.colors, R.color.button_light_peach, "colors"),
         VocabularyCategory(R.drawable.pronouns, R.string.pronouns, R.color.button_light_purple, "pronouns"),
         VocabularyCategory(R.drawable.verbs, R.string.verbs, R.color.button_dark_orange_brown, "verbs"),
-        VocabularyCategory(R.drawable.adjectives_and_adverbs, R.string.adjectives_adverbs, R.color.button_light_green, "adjectives_and_adverbs"),
-        VocabularyCategory(R.drawable.alphabets, R.string.alphabets, R.color.button_light_teal_green, "alphabets")
+        VocabularyCategory(R.drawable.adjectives_and_adverbs, R.string.adjectives_adverbs, R.color.button_light_green, "adjectives_and_adverbs")
     )
 
     Dialog(
@@ -192,11 +191,17 @@ fun VocabularyModal(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        Text(
-                            text = predictionMessage.ifEmpty { "No prediction available" },
-                            fontSize = 16.sp,
-                            color = if (predictionMessage.isEmpty()) Color.Gray else Color.Black
-                        )
+                        LazyColumn(
+                            modifier = Modifier.height(100.dp)
+                        ) {
+                            item {
+                                Text(
+                                    text = predictionMessage.ifEmpty { "No prediction available" },
+                                    fontSize = 16.sp,
+                                    color = if (predictionMessage.isEmpty()) Color.Gray else Color.Black
+                                )
+                            }
+                        }
                         
                         Spacer(modifier = Modifier.height(12.dp))
                         
@@ -246,102 +251,27 @@ fun VocabularyModal(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            vocabularyCategories.take(4).forEach { category ->
-                                val isSelected = selectedCategory == category.categoryKey
-                                VocabularyCategoryButton(
-                                    iconResId = category.iconResId,
-                                    text = stringResource(id = category.textResId),
-                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
-                                    onClick = { 
-                                        onCategoryClick(category.categoryKey)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            vocabularyCategories.drop(4).take(4).forEach { category ->
-                                val isSelected = selectedCategory == category.categoryKey
-                                VocabularyCategoryButton(
-                                    iconResId = category.iconResId,
-                                    text = stringResource(id = category.textResId),
-                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
-                                    onClick = { 
-                                        onCategoryClick(category.categoryKey)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            vocabularyCategories.drop(8).take(4).forEach { category ->
-                                val isSelected = selectedCategory == category.categoryKey
-                                VocabularyCategoryButton(
-                                    iconResId = category.iconResId,
-                                    text = stringResource(id = category.textResId),
-                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
-                                    onClick = { 
-                                        onCategoryClick(category.categoryKey)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            vocabularyCategories.drop(12).take(4).forEach { category ->
-                                val isSelected = selectedCategory == category.categoryKey
-                                VocabularyCategoryButton(
-                                    iconResId = category.iconResId,
-                                    text = stringResource(id = category.textResId),
-                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
-                                    onClick = { 
-                                        onCategoryClick(category.categoryKey)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            vocabularyCategories.drop(16).take(2).forEach { category ->
-                                val isSelected = selectedCategory == category.categoryKey
-                                VocabularyCategoryButton(
-                                    iconResId = category.iconResId,
-                                    text = stringResource(id = category.textResId),
-                                    backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
-                                    onClick = { 
-                                        onCategoryClick(category.categoryKey)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                )
+                    vocabularyCategories.chunked(4).forEach { rowCategories ->
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                rowCategories.forEach { category ->
+                                    val isSelected = selectedCategory == category.categoryKey
+                                    VocabularyCategoryButton(
+                                        iconResId = category.iconResId,
+                                        text = stringResource(id = category.textResId),
+                                        backgroundColor = if (isSelected) Color.Blue else colorResource(id = category.colorResId),
+                                        onClick = { 
+                                            onCategoryClick(category.categoryKey)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                repeat(4 - rowCategories.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
                         }
                     }

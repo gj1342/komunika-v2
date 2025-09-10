@@ -173,10 +173,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             rowCategories.forEach { category ->
-                                val isModelAvailable = category.categoryKey in listOf(
-                                    "alphabets", "colors", "family", "gender", "greetings", "numbers1-10", "numbers11-19", "numbers20-100",
-                                    "people", "places", "questions", "time", "pronouns"
-                                )
+                                val isModelAvailable = handLandmarkerService.isCategoryAvailable(category.categoryKey)
                                 val isSelected = selectedCategory == category.categoryKey
                                 
                                 VocabularyCategoryButton(
