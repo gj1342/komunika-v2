@@ -10,6 +10,7 @@ class LabelService(private val context: Context) {
         try {
             val fileName = when (category) {
                 "facial_expressions" -> "facial_expression_labels.txt"
+                "adjectives_and_adverbs" -> "adjectives_adverbs_labels.txt"
                 else -> "${category}_labels.txt"
             }
             val inputStream = context.assets.open("labels/$fileName")

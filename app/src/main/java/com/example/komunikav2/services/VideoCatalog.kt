@@ -172,6 +172,18 @@ object VideoCatalog {
             "CALENDAR/thursday.mp4",
             "CALENDAR/tuesday.mp4",
             "CALENDAR/wednesday.mp4",
+            "CALENDAR/january.mp4",
+            "CALENDAR/february.mp4",
+            "CALENDAR/march.mp4",
+            "CALENDAR/april.mp4",
+            "CALENDAR/may.mp4",
+            "CALENDAR/june.mp4",
+            "CALENDAR/july.mp4",
+            "CALENDAR/august.mp4",
+            "CALENDAR/september.mp4",
+            "CALENDAR/october.mp4",
+            "CALENDAR/november.mp4",
+            "CALENDAR/december.mp4",
         ),
         "colors" to listOf(
             "COLORS/black.mp4",
@@ -415,6 +427,18 @@ object VideoCatalog {
                     }
                 }
             }
+            "survival" -> {
+                val normalizedPrediction = prediction.lowercase().trim()
+                when (normalizedPrediction) {
+                    "dont know", "dont_know", "don't know", "don_t_know" -> "SURVIVAL/don_t_know.mp4"
+                    "dont understand", "dont_understand", "don't understand", "don_t_understand" -> "SURVIVAL/don_t_understand.mp4"
+                    "finish", "finished" -> "SURVIVAL/finished.mp4"
+                    else -> {
+                        val key = normalizedPrediction.replace(" ", "_")
+                        phraseKeyToPath[key]
+                    }
+                }
+            }
             "family" -> {
                 val normalizedPrediction = prediction.lowercase().trim()
                 when (normalizedPrediction) {
@@ -485,6 +509,15 @@ object VideoCatalog {
                             else -> null
                         }
                     }
+                }
+            }
+            "survival" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "dont know", "dont_know", "don't know", "don_t_know" -> Uri.parse(ASSET_PREFIX + "SURVIVAL/don_t_know.mp4")
+                    "dont understand", "dont_understand", "don't understand", "don_t_understand" -> Uri.parse(ASSET_PREFIX + "SURVIVAL/don_t_understand.mp4")
+                    "finish", "finished" -> Uri.parse(ASSET_PREFIX + "SURVIVAL/finished.mp4")
+                    else -> getUriForPhrase(label)
                 }
             }
             "family" -> {
@@ -570,6 +603,20 @@ object VideoCatalog {
             val key = path.substringAfterLast('/').removeSuffix(".mp4").lowercase()
             if (!map.containsKey(key)) map[key] = path
         }
+        if (!map.containsKey("dont_know")) map["dont_know"] = "SURVIVAL/don_t_know.mp4"
+        if (!map.containsKey("dont_understand")) map["dont_understand"] = "SURVIVAL/don_t_understand.mp4"
+        if (!map.containsKey("hello")) map["hello"] = "GREETINGS/hello.mp4"
+        if (!map.containsKey("hi")) map["hi"] = "GREETINGS/hello.mp4"
+        if (!map.containsKey("angry")) map["angry"] = "FACIAL EXPRESSIONS/angry_mad.mp4"
+        if (!map.containsKey("mad")) map["mad"] = "FACIAL EXPRESSIONS/angry_mad.mp4"
+        if (!map.containsKey("finish")) map["finish"] = "SURVIVAL/finished.mp4"
+        if (!map.containsKey("house")) map["house"] = "PLACES/house_home.mp4"
+        if (!map.containsKey("home")) map["home"] = "PLACES/house_home.mp4"
+        if (!map.containsKey("price")) map["price"] = "MONEY MATTERS/price_cost.mp4"
+        if (!map.containsKey("cost")) map["cost"] = "MONEY MATTERS/price_cost.mp4"
+        if (!map.containsKey("blackpepper")) map["blackpepper"] = "FOOD/black_pepper.mp4"
+        if (!map.containsKey("black_pepper")) map["black_pepper"] = "FOOD/black_pepper.mp4"
+        if (!map.containsKey("black_peppers")) map["black_peppers"] = "FOOD/black_pepper.mp4"
         map
     }
 
@@ -579,6 +626,49 @@ object VideoCatalog {
 
     private fun normalize(input: String): String {
         return input.lowercase().replace("[^a-z0-9]+".toRegex(), "_").trim('_')
+    }
+
+    private fun startsWithToken(remaining: String, token: String): Boolean {
+        if (!remaining.startsWith(token)) return false
+        if (remaining.length == token.length) return true
+        return remaining[token.length] == '_'
+    }
+
+    private fun mapToKnownKey(key: String): String? {
+        if (phraseKeyToPath.containsKey(key)) return key
+        val addEd = key + "ed"
+        if (phraseKeyToPath.containsKey(addEd)) return addEd
+        if (key.endsWith("ed")) {
+            val base = key.removeSuffix("ed")
+            if (phraseKeyToPath.containsKey(base)) return base
+            if (base.endsWith("i")) {
+                val yBase = base.removeSuffix("i") + "y"
+                if (phraseKeyToPath.containsKey(yBase)) return yBase
+            }
+        }
+        if (key.endsWith("ing")) {
+            val base = key.removeSuffix("ing")
+            if (phraseKeyToPath.containsKey(base)) return base
+            val eBase = base + "e"
+            if (phraseKeyToPath.containsKey(eBase)) return eBase
+        }
+        if (key.endsWith("s")) {
+            val base = key.removeSuffix("s")
+            if (phraseKeyToPath.containsKey(base)) return base
+        }
+        if (key.endsWith("es")) {
+            val base = key.removeSuffix("es")
+            if (phraseKeyToPath.containsKey(base)) return base
+        }
+        if (key.endsWith("y")) {
+            val past = key.removeSuffix("y") + "ied"
+            if (phraseKeyToPath.containsKey(past)) return past
+        }
+        if (key.endsWith("ied")) {
+            val base = key.removeSuffix("ied") + "y"
+            if (phraseKeyToPath.containsKey(base)) return base
+        }
+        return null
     }
 
     private fun numberToPhraseKeys(value: Int): List<String> {
@@ -642,6 +732,11 @@ object VideoCatalog {
         }
         val path = phraseKeyToPath[raw]
         if (path != null) return Uri.parse(ASSET_PREFIX + path)
+        val morph = mapToKnownKey(raw)
+        if (morph != null) {
+            val p = phraseKeyToPath[morph] ?: return null
+            return Uri.parse(ASSET_PREFIX + p)
+        }
         if (raw.length == 1 && raw[0] in 'a'..'z') return Uri.parse(ASSET_PREFIX + "ALPHABETS/${raw}.mp4")
         return null
     }
@@ -663,6 +758,27 @@ object VideoCatalog {
                 }
             }
             
+            // Special handling for survival multi-word phrases
+            val survivalMatch = when {
+                startsWithToken(remaining, "dont_know") || startsWithToken(remaining, "don_t_know") -> {
+                    out += Uri.parse(ASSET_PREFIX + "SURVIVAL/don_t_know.mp4")
+                    if (startsWithToken(remaining, "dont_know")) "dont_know" else "don_t_know"
+                }
+                startsWithToken(remaining, "dont_understand") || startsWithToken(remaining, "don_t_understand") -> {
+                    out += Uri.parse(ASSET_PREFIX + "SURVIVAL/don_t_understand.mp4")
+                    if (startsWithToken(remaining, "dont_understand")) "dont_understand" else "don_t_understand"
+                }
+                startsWithToken(remaining, "finish") || startsWithToken(remaining, "finished") -> {
+                    out += Uri.parse(ASSET_PREFIX + "SURVIVAL/finished.mp4")
+                    if (startsWithToken(remaining, "finish")) "finish" else "finished"
+                }
+                else -> null
+            }
+            if (survivalMatch != null) {
+                remaining = remaining.removePrefix(survivalMatch).trimStart('_')
+                continue
+            }
+
             // Special handling for family phrases
             val familyMatch = when {
                 remaining.startsWith("godfather_mother") -> {
@@ -709,28 +825,85 @@ object VideoCatalog {
                 continue
             }
             
-            // Special handling for pronouns
+            // Special handling for pronouns (match whole tokens only)
             val pronounMatch = when {
-                remaining.startsWith("my") || remaining.startsWith("mine") || 
-                remaining.startsWith("i") -> {
+                startsWithToken(remaining, "my") || startsWithToken(remaining, "mine") || 
+                startsWithToken(remaining, "i") -> {
                     out += Uri.parse(ASSET_PREFIX + "PRONOUNS/me.mp4")
-                    if (remaining.startsWith("my")) "my" else if (remaining.startsWith("mine")) "mine" else "i"
+                    if (startsWithToken(remaining, "my")) "my" else if (startsWithToken(remaining, "mine")) "mine" else "i"
                 }
-                remaining.startsWith("he") || remaining.startsWith("she") || 
-                remaining.startsWith("him") || remaining.startsWith("her") -> {
+                startsWithToken(remaining, "he") || startsWithToken(remaining, "she") || 
+                startsWithToken(remaining, "him") || startsWithToken(remaining, "her") -> {
                     out += Uri.parse(ASSET_PREFIX + "PRONOUNS/he_she_him_her.mp4")
-                    if (remaining.startsWith("he")) "he" else if (remaining.startsWith("she")) "she" 
-                    else if (remaining.startsWith("him")) "him" else "her"
+                    if (startsWithToken(remaining, "he")) "he" else if (startsWithToken(remaining, "she")) "she" 
+                    else if (startsWithToken(remaining, "him")) "him" else "her"
                 }
-                remaining.startsWith("they") || remaining.startsWith("them") || 
-                remaining.startsWith("those") -> {
+                startsWithToken(remaining, "they") || startsWithToken(remaining, "them") || 
+                startsWithToken(remaining, "those") -> {
                     out += Uri.parse(ASSET_PREFIX + "PRONOUNS/they_them_those.mp4")
-                    if (remaining.startsWith("they")) "they" else if (remaining.startsWith("them")) "them" else "those"
+                    if (startsWithToken(remaining, "they")) "they" else if (startsWithToken(remaining, "them")) "them" else "those"
                 }
                 else -> null
             }
             if (pronounMatch != null) {
                 remaining = remaining.removePrefix(pronounMatch).trimStart('_')
+                continue
+            }
+
+            if (startsWithToken(remaining, "black_pepper") || startsWithToken(remaining, "blackpepper") || startsWithToken(remaining, "black_peppers")) {
+                out += Uri.parse(ASSET_PREFIX + "FOOD/black_pepper.mp4")
+                remaining = when {
+                    startsWithToken(remaining, "black_pepper") -> remaining.removePrefix("black_pepper")
+                    startsWithToken(remaining, "black_peppers") -> remaining.removePrefix("black_peppers")
+                    else -> remaining.removePrefix("blackpepper")
+                }.trimStart('_')
+                continue
+            }
+
+            // Special handling for facial expression synonyms
+            val facialMatch = when {
+                startsWithToken(remaining, "angry") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/angry_mad.mp4")
+                    "angry"
+                }
+                startsWithToken(remaining, "mad") -> {
+                    out += Uri.parse(ASSET_PREFIX + "FACIAL EXPRESSIONS/angry_mad.mp4")
+                    "mad"
+                }
+                else -> null
+            }
+            if (facialMatch != null) {
+                remaining = remaining.removePrefix(facialMatch).trimStart('_')
+                continue
+            }
+
+            val firstToken = remaining.takeWhile { it != '_' }
+            val morphToken = mapToKnownKey(firstToken)
+            if (morphToken != null) {
+                phraseKeyToPath[morphToken]?.let { out += Uri.parse(ASSET_PREFIX + it) }
+                remaining = remaining.removePrefix(firstToken).trimStart('_')
+                continue
+            }
+
+            if (startsWithToken(remaining, "house") || startsWithToken(remaining, "home")) {
+                out += Uri.parse(ASSET_PREFIX + "PLACES/house_home.mp4")
+                remaining = remaining.removePrefix(if (startsWithToken(remaining, "house")) "house" else "home").trimStart('_')
+                continue
+            }
+
+            if (startsWithToken(remaining, "price") || startsWithToken(remaining, "cost")) {
+                out += Uri.parse(ASSET_PREFIX + "MONEY MATTERS/price_cost.mp4")
+                remaining = remaining.removePrefix(if (startsWithToken(remaining, "price")) "price" else "cost").trimStart('_')
+                continue
+            }
+
+            if (startsWithToken(remaining, "black_pepper") || startsWithToken(remaining, "blackpepper") || startsWithToken(remaining, "black_peppers")) {
+                out += Uri.parse(ASSET_PREFIX + "FOOD/black_pepper.mp4")
+                remaining = when {
+                    startsWithToken(remaining, "black_pepper") -> remaining.removePrefix("black_pepper")
+                    startsWithToken(remaining, "black_peppers") -> remaining.removePrefix("black_peppers")
+                    else -> remaining.removePrefix("blackpepper")
+                }.trimStart('_')
                 continue
             }
             
