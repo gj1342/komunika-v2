@@ -63,6 +63,7 @@ data class UserSelectionMessage(
 class NearbyConnectionService private constructor(private val context: Context) {
     
     private val connectionsClient = Nearby.getConnectionsClient(context)
+    private val permissionManager = PermissionManager(context)
     private val json = Json { 
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -244,6 +245,12 @@ class NearbyConnectionService private constructor(private val context: Context) 
     }
     
     fun startAdvertising(userProfile: UserProfile) {
+        if (!permissionManager.isNearbyConnectionReady()) {
+            Log.e(TAG, "Cannot start advertising: Required permissions not granted")
+            _connectionState.value = ConnectionState.ERROR
+            return
+        }
+        
         currentUserProfile = userProfile
         currentServiceId = userProfile.serviceId
         
@@ -271,6 +278,12 @@ class NearbyConnectionService private constructor(private val context: Context) 
     }
     
     fun startDiscovery(serviceId: String) {
+        if (!permissionManager.isNearbyConnectionReady()) {
+            Log.e(TAG, "Cannot start discovery: Required permissions not granted")
+            _connectionState.value = ConnectionState.ERROR
+            return
+        }
+        
         currentServiceId = serviceId
         
         val discoveryOptions = DiscoveryOptions.Builder()
@@ -717,7 +730,16 @@ class NearbyConnectionService private constructor(private val context: Context) 
     }
     
     fun getConnectionStatus(): String {
-        return "State: ${_connectionState.value}, Endpoints: $connectedEndpointIds, Users: ${_connectedUsers.value.map { it.name }}"
+        val permissionStatus = permissionManager.getPermissionStatusText()
+        return "State: ${_connectionState.value}, Endpoints: $connectedEndpointIds, Users: ${_connectedUsers.value.map { it.name }}\nPermissions:\n$permissionStatus"
+    }
+    
+    fun checkPermissions(): Boolean {
+        return permissionManager.isNearbyConnectionReady()
+    }
+    
+    fun getPermissionState(): PermissionManager.PermissionState {
+        return permissionManager.checkAllPermissions()
     }
     
     fun forceRefreshConnectedUsers() {
