@@ -1,0 +1,25 @@
+package com.example.komunikav2.navigation
+
+sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
+    object Home : Screen("home")
+    object Navigation : Screen("navigation")
+    object Singlephone : Screen("singlephone")
+    object Multiphone : Screen("multiphone")
+    object MultiphoneChat : Screen("multiphone_chat")
+    object DeafMultiphoneChat : Screen("deaf_multiphone_chat")
+    object Connection : Screen("connection")
+    object Vocabulary : Screen("vocabulary")
+    object Category : Screen("category/{category}") {
+        fun createRoute(category: String) = "category/$category"
+    }
+    object Numbers : Screen("numbers")
+    object CategoryFSLVideo : Screen("category_fsl_video/{category}?label={label}") {
+        fun createRoute(category: String) = "category_fsl_video/$category"
+        fun createRoute(category: String, label: String): String {
+            val encoded = android.net.Uri.encode(label)
+            return "category_fsl_video/$category?label=$encoded"
+        }
+    }
+    object SignLanguageRecognition : Screen("sign_language_recognition")
+} 

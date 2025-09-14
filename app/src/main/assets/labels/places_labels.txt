@@ -1,0 +1,14 @@
+apartment
+bank
+cemetery
+church
+condominium
+grocery
+hospital
+hotel
+house
+market
+office
+restaurant
+school
+store

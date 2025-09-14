@@ -1,0 +1,19 @@
+ATM
+Bank
+Billion
+Borrow
+Cash
+Check
+Coin
+Credit card
+Debt_Credit
+Deposit
+Installment
+Million
+Money
+Pay
+Pesos
+Salary
+Savings
+Thousand
+Withdraw
