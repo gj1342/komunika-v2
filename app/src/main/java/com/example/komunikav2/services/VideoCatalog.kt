@@ -464,6 +464,24 @@ object VideoCatalog {
                     }
                 }
             }
+            "greetings" -> {
+                val normalizedPrediction = prediction.lowercase().trim()
+                when (normalizedPrediction) {
+                    "good evening" -> "GREETINGS/good_evening.mp4"
+                    "good morning" -> "GREETINGS/good_morning.mp4"
+                    "good afternoon" -> "GREETINGS/good_afternoon.mp4"
+                    "good night" -> "GREETINGS/good_night.mp4"
+                    "thank you" -> "GREETINGS/thank_you.mp4"
+                    "hello" -> "GREETINGS/hello.mp4"
+                    "fine" -> "GREETINGS/fine.mp4"
+                    "sorry" -> "GREETINGS/sorry.mp4"
+                    "welcome" -> "GREETINGS/welcome.mp4"
+                    else -> {
+                        val key = normalizedPrediction.replace(" ", "_")
+                        phraseKeyToPath[key]
+                    }
+                }
+            }
             else -> {
                 val key = prediction.lowercase().replace(" ", "_")
                 phraseKeyToPath[key]
@@ -536,6 +554,67 @@ object VideoCatalog {
                 val normalizedLabel = label.lowercase().trim()
                 when (normalizedLabel) {
                     "hard-of-hearing" -> Uri.parse(ASSET_PREFIX + "GENDER/hard_of_hearing.mp4")
+                    else -> getUriForPhrase(label)
+                }
+            }
+            "greetings" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "good evening" -> Uri.parse(ASSET_PREFIX + "GREETINGS/good_evening.mp4")
+                    "good morning" -> Uri.parse(ASSET_PREFIX + "GREETINGS/good_morning.mp4")
+                    "good afternoon" -> Uri.parse(ASSET_PREFIX + "GREETINGS/good_afternoon.mp4")
+                    "good night" -> Uri.parse(ASSET_PREFIX + "GREETINGS/good_night.mp4")
+                    "thank you" -> Uri.parse(ASSET_PREFIX + "GREETINGS/thank_you.mp4")
+                    "hello" -> Uri.parse(ASSET_PREFIX + "GREETINGS/hello.mp4")
+                    "fine" -> Uri.parse(ASSET_PREFIX + "GREETINGS/fine.mp4")
+                    "sorry" -> Uri.parse(ASSET_PREFIX + "GREETINGS/sorry.mp4")
+                    "welcome" -> Uri.parse(ASSET_PREFIX + "GREETINGS/welcome.mp4")
+                    else -> getUriForPhrase(label)
+                }
+            }
+            "money_matters" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "bank" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/bank.mp4")
+                    "atm" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/atm.mp4")
+                    "billion" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/billion.mp4")
+                    "borrow" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/borrow.mp4")
+                    "cash" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/cash.mp4")
+                    "check" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/check.mp4")
+                    "coin" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/coin.mp4")
+                    "credit card" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/credit_card.mp4")
+                    "debt credit" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/debt_credit.mp4")
+                    "deposit" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/deposit.mp4")
+                    "installment" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/installment.mp4")
+                    "million" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/million.mp4")
+                    "money" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/money.mp4")
+                    "pay" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/pay.mp4")
+                    "pesos" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/pesos.mp4")
+                    "price cost" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/price_cost.mp4")
+                    "salary" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/salary.mp4")
+                    "savings" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/savings.mp4")
+                    "thousand" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/thousand.mp4")
+                    "withdraw" -> Uri.parse(ASSET_PREFIX + "MONEY MATTERS/withdraw.mp4")
+                    else -> getUriForPhrase(label)
+                }
+            }
+            "places" -> {
+                val normalizedLabel = label.lowercase().trim()
+                when (normalizedLabel) {
+                    "bank" -> Uri.parse(ASSET_PREFIX + "PLACES/bank.mp4")
+                    "apartment" -> Uri.parse(ASSET_PREFIX + "PLACES/apartment.mp4")
+                    "cemetery" -> Uri.parse(ASSET_PREFIX + "PLACES/cemetery.mp4")
+                    "church" -> Uri.parse(ASSET_PREFIX + "PLACES/church.mp4")
+                    "condominium" -> Uri.parse(ASSET_PREFIX + "PLACES/condominium.mp4")
+                    "grocery" -> Uri.parse(ASSET_PREFIX + "PLACES/grocery.mp4")
+                    "hospital" -> Uri.parse(ASSET_PREFIX + "PLACES/hospital.mp4")
+                    "hotel" -> Uri.parse(ASSET_PREFIX + "PLACES/hotel.mp4")
+                    "house home" -> Uri.parse(ASSET_PREFIX + "PLACES/house_home.mp4")
+                    "market" -> Uri.parse(ASSET_PREFIX + "PLACES/market.mp4")
+                    "office" -> Uri.parse(ASSET_PREFIX + "PLACES/office.mp4")
+                    "restaurant" -> Uri.parse(ASSET_PREFIX + "PLACES/restaurant.mp4")
+                    "school" -> Uri.parse(ASSET_PREFIX + "PLACES/school.mp4")
+                    "store" -> Uri.parse(ASSET_PREFIX + "PLACES/store.mp4")
                     else -> getUriForPhrase(label)
                 }
             }
@@ -758,6 +837,35 @@ object VideoCatalog {
                 }
             }
             
+            // Special handling for greetings multi-word phrases
+            val greetingsMatch = when {
+                startsWithToken(remaining, "good_evening") -> {
+                    out += Uri.parse(ASSET_PREFIX + "GREETINGS/good_evening.mp4")
+                    "good_evening"
+                }
+                startsWithToken(remaining, "good_morning") -> {
+                    out += Uri.parse(ASSET_PREFIX + "GREETINGS/good_morning.mp4")
+                    "good_morning"
+                }
+                startsWithToken(remaining, "good_afternoon") -> {
+                    out += Uri.parse(ASSET_PREFIX + "GREETINGS/good_afternoon.mp4")
+                    "good_afternoon"
+                }
+                startsWithToken(remaining, "good_night") -> {
+                    out += Uri.parse(ASSET_PREFIX + "GREETINGS/good_night.mp4")
+                    "good_night"
+                }
+                startsWithToken(remaining, "thank_you") -> {
+                    out += Uri.parse(ASSET_PREFIX + "GREETINGS/thank_you.mp4")
+                    "thank_you"
+                }
+                else -> null
+            }
+            if (greetingsMatch != null) {
+                remaining = remaining.removePrefix(greetingsMatch).trimStart('_')
+                continue
+            }
+
             // Special handling for survival multi-word phrases
             val survivalMatch = when {
                 startsWithToken(remaining, "dont_know") || startsWithToken(remaining, "don_t_know") -> {
