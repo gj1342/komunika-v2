@@ -34,6 +34,7 @@ fun SinglePhoneScreen(navController: NavController) {
     var showClearConfirmation by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     var playlist by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var replayTrigger by remember { mutableStateOf(0) }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -68,7 +69,7 @@ fun SinglePhoneScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                VideoCardPlayer(uris = playlist)
+                VideoCardPlayer(uris = playlist, replayTrigger = replayTrigger)
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -100,6 +101,7 @@ fun SinglePhoneScreen(navController: NavController) {
                         if (messageText.isNotEmpty()) {
                             messages = messages + ChatMessage(messageText, true)
                             playlist = VideoCatalog.splitInputToUris(messageText)
+                            replayTrigger++ // Increment replay trigger to replay video even if same content
                             messageText = ""
                         }
                     }
