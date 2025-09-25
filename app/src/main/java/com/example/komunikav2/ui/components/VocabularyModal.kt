@@ -3,6 +3,10 @@ package com.example.komunikav2.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.komunikav2.R
+import kotlinx.coroutines.delay
 
 @Composable
 fun VocabularyModal(
@@ -34,6 +39,16 @@ fun VocabularyModal(
     isModelReady: Boolean = false,
     isHandDetected: Boolean = false
 ) {
+    val scrollState = rememberScrollState()
+    
+    // Autoscroll when prediction message changes - scroll to show the growing sentence
+    LaunchedEffect(predictionMessage) {
+        if (predictionMessage.isNotBlank()) {
+            delay(100) // Small delay to ensure the text is rendered
+            // Scroll to the bottom to show the latest additions to the sentence
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
     
     val vocabularyCategories = listOf(
         VocabularyCategory(R.drawable.alphabets, R.string.alphabets, R.color.button_light_blue, "alphabets"),
@@ -191,16 +206,16 @@ fun VocabularyModal(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        LazyColumn(
-                            modifier = Modifier.height(100.dp)
+                        Column(
+                            modifier = Modifier
+                                .height(100.dp)
+                                .verticalScroll(scrollState)
                         ) {
-                            item {
-                                Text(
-                                    text = predictionMessage.ifEmpty { "No prediction available" },
-                                    fontSize = 16.sp,
-                                    color = if (predictionMessage.isEmpty()) Color.Gray else Color.Black
-                                )
-                            }
+                            Text(
+                                text = predictionMessage.ifEmpty { "No prediction available" },
+                                fontSize = 16.sp,
+                                color = if (predictionMessage.isEmpty()) Color.Gray else Color.Black
+                            )
                         }
                         
                         Spacer(modifier = Modifier.height(12.dp))
