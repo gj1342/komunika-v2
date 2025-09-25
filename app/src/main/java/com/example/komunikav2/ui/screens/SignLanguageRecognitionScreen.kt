@@ -4,7 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -48,6 +52,7 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
     val context = LocalContext.current
     val handLandmarkerService = remember { HandLandmarkerService(context) }
     val nearbyService = remember { NearbyConnectionService.getInstance(context) }
+    val scrollState = rememberScrollState()
     
     val handLandmarks by handLandmarkerService.handLandmarks.collectAsState()
     val isHandDetected by handLandmarkerService.isHandDetected.collectAsState()
@@ -80,6 +85,15 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
         handLandmarkerService.prediction.collect { newPrediction ->
             prediction = newPrediction
             Log.d("SignLanguageRecognition", "Prediction StateFlow updated: '$newPrediction'")
+        }
+    }
+    
+    // Autoscroll when prediction changes - scroll to show the growing sentence
+    LaunchedEffect(prediction) {
+        if (prediction.isNotBlank()) {
+            delay(100) // Small delay to ensure the text is rendered
+            // Scroll to the bottom to show the latest additions to the sentence
+            scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
     
@@ -227,22 +241,22 @@ fun SignLanguageRecognitionScreen(navController: NavController) {
                     .background(Color(0xFFFFF9C4))
                     .padding(12.dp)
             ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
                 ) {
-                    item {
-                        Text(
-                            text = when {
-                                prediction.isNotBlank() -> prediction
-                                selectedCategory == null -> "Select a category to start recognition"
-                                isHandDetected -> "Analyzing..."
-                                else -> "Ready for sign recognition"
-                            },
-                            fontSize = 16.sp,
-                            color = Color.Black,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    Text(
+                        text = when {
+                            prediction.isNotBlank() -> prediction
+                            selectedCategory == null -> "Select a category to start recognition"
+                            isHandDetected -> "Analyzing..."
+                            else -> "Ready for sign recognition"
+                        },
+                        fontSize = 16.sp,
+                        color = Color.Black,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
             

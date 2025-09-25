@@ -3,6 +3,10 @@ package com.example.komunikav2.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -21,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.komunikav2.services.HandLandmarkerService
 import com.example.komunikav2.services.NearbyConnectionService
 import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.delay
 
 @Composable
 fun HearingCameraPopup(
@@ -33,6 +38,7 @@ fun HearingCameraPopup(
     val context = LocalContext.current
     val handLandmarkerService = remember { HandLandmarkerService(context) }
     val nearbyService = remember { NearbyConnectionService.getInstance(context) }
+    val scrollState = rememberScrollState()
     
     val isHandDetected by handLandmarkerService.isHandDetected.collectAsState()
     val prediction by handLandmarkerService.prediction.collectAsState()
@@ -177,6 +183,16 @@ fun HearingCameraPopup(
             else -> onPredictionChange("User selected. Waiting for ${selectedUser.name} to choose a category...")
         }
     }
+    
+    // Autoscroll when prediction message changes - scroll to show the growing sentence
+    LaunchedEffect(predictionMessage) {
+        if (predictionMessage.isNotBlank()) {
+            delay(100) // Small delay to ensure the text is rendered
+            // Scroll to the bottom to show the latest additions to the sentence
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+    
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -229,17 +245,17 @@ fun HearingCameraPopup(
                 .background(Color(0xFFFFF9C4))
                 .padding(12.dp)
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
             ) {
-                item {
-                    Text(
-                        text = predictionMessage.ifEmpty { "Prediction message here..." },
-                        fontSize = 16.sp, // Increased font size
-                        color = Color.Black,
-                        fontWeight = FontWeight.Medium // Changed font weight
-                    )
-                }
+                Text(
+                    text = predictionMessage.ifEmpty { "Prediction message here..." },
+                    fontSize = 16.sp,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
